@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noyyal Studios — Architecture & Research</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&family=Playfair+Display:ital,wght@0,400;1,400;1,600&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --black: #0c0c0c;
+  --white: #f4f3ef;
+  --gray: #888;
+  --light-gray: #d8d6d0;
+  --mid: #444;
+  --nav-w: 260px;
+  --transition: 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--white);
+  color: var(--black);
+  font-family: 'DM Mono', monospace;
+  cursor: none;
+  overflow-x: hidden;
+}
+
+/* ── Cursor ── */
+#cursor {
+  position: fixed;
+  width: 10px; height: 10px;
+  background: var(--black);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  mix-blend-mode: multiply;
+  transition: width 0.2s, height 0.2s;
+}
+#cursor.hover { width: 28px; height: 28px; }
+
+#inkCanvas {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+}
+
+/* ── Navigation ── */
+nav {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--light-gray);
+  background: var(--white);
+  z-index: 500;
+  transition: background 0.3s;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--black);
+}
+.nav-logo svg { width: 32px; height: 32px; }
+.nav-logo-text {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.nav-links {
+  display: flex;
+  gap: 36px;
+  list-style: none;
+}
+.nav-links a {
+  text-decoration: none;
+  color: var(--gray);
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+  cursor: none;
+}
+.nav-links a:hover, .nav-links a.active { color: var(--black); }
+
+.nav-right {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--gray);
+  text-transform: uppercase;
+}
+
+/* ── Pages ── */
+.page-section { display: none; }
+.page-section.active { display: block; }
+
+/* ── HOME ── */
+#home {
+  min-height: 100vh;
+  padding-top: 56px;
+}
+
+.home-hero {
+  height: calc(100vh - 56px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+.hero-left {
+  padding: 64px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid var(--light-gray);
+}
+
+.hero-eyebrow {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  color: var(--gray);
+  text-transform: uppercase;
+}
+
+.hero-headline {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(48px, 5.5vw, 88px);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.03em;
+}
+.hero-headline em {
+  font-style: italic;
+  font-family: 'Playfair Display', serif;
+  font-weight: 400;
+  color: var(--gray);
+}
+
+.hero-footer-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.hero-footer-text {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--gray);
+  max-width: 220px;
+  line-height: 1.8;
+}
+
+.hero-cta {
+  display: inline-block;
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--black);
+  border-bottom: 1px solid var(--black);
+  padding-bottom: 2px;
+  cursor: none;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+.hero-cta:hover { opacity: 0.45; }
+
+.hero-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+  padding: 64px 48px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated architectural lines */
+.arch-lines svg {
+  width: 100%;
+  max-width: 340px;
+}
+
+.hero-right-label {
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  color: var(--light-gray);
+  text-transform: uppercase;
+  margin-top: auto;
+}
+
+/* Info strip */
+.info-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--light-gray);
+}
+.info-cell {
+  padding: 28px 32px;
+  border-right: 1px solid var(--light-gray);
+}
+.info-cell:last-child { border-right: none; }
+.info-cell .num {
+  font-family: 'Syne', sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.info-cell .label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--gray);
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+/* Featured projects strip */
+.section-header {
+  padding: 48px 48px 24px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--light-gray);
+}
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+.section-link {
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gray);
+  cursor: none;
+  text-decoration: none;
+  border-bottom: 1px solid var(--light-gray);
+  padding-bottom: 1px;
+  transition: color 0.2s;
+}
+.section-link:hover { color: var(--black); }
+
+.project-grid-home {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.project-card-home {
+  border-right: 1px solid var(--light-gray);
+  border-bottom: 1px solid var(--light-gray);
+  cursor: none;
+  overflow: hidden;
+  transition: background 0.3s;
+}
+.project-card-home:last-child { border-right: none; }
+.project-card-home:hover { background: #eeede8; }
+.project-thumb {
+  width: 100%;
+  aspect-ratio: 4/3;
+  background: var(--light-gray);
+  overflow: hidden;
+  position: relative;
+}
+.project-thumb-inner {
+  width: 100%; height: 100%;
+  background: linear-gradient(135deg, #d6d4ce 0%, #c8c6bf 50%, #b8b6b0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: #aaa;
+  text-transform: uppercase;
+  transition: transform var(--transition);
+}
+.project-card-home:hover .project-thumb-inner { transform: scale(1.03); }
+.project-card-meta {
+  padding: 20px 24px 24px;
+}
+.project-card-meta .proj-num {
+  font-size: 9px;
+  color: var(--gray);
+  letter-spacing: 0.2em;
+  margin-bottom: 6px;
+}
+.project-card-meta .proj-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.project-card-meta .proj-type {
+  font-size: 9px;
+  color: var(--gray);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+
+/* Studio statement */
+.studio-statement {
+  padding: 80px 48px;
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 64px;
+  border-bottom: 1px solid var(--light-gray);
+}
+.stmt-label {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gray);
+  padding-top: 4px;
+}
+.stmt-text {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(22px, 2.8vw, 38px);
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--black);
+}
+.stmt-text em { font-style: italic; color: var(--gray); }
+
+/* ── PROJECTS PAGE ── */
+#projects {
+  padding-top: 56px;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--nav-w) 1fr;
+}
+
+.proj-sidebar {
+  position: fixed;
+  top: 56px;
+  left: 0;
+  width: var(--nav-w);
+  height: calc(100vh - 56px);
+  border-right: 1px solid var(--light-gray);
+  overflow-y: auto;
+  background: var(--white);
+  z-index: 10;
+}
+
+.proj-sidebar::-webkit-scrollbar { width: 2px; }
+.proj-sidebar::-webkit-scrollbar-thumb { background: var(--light-gray); }
+
+.sidebar-section {
+  border-bottom: 1px solid var(--light-gray);
+  padding: 20px 0;
+}
+.sidebar-section-title {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gray);
+  padding: 0 24px 12px;
+}
+.sidebar-item {
+  display: block;
+  padding: 9px 24px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--mid);
+  cursor: none;
+  text-decoration: none;
+  transition: all 0.18s;
+  border-left: 2px solid transparent;
+}
+.sidebar-item:hover { color: var(--black); border-left-color: var(--light-gray); }
+.sidebar-item.active { color: var(--black); border-left-color: var(--black); background: rgba(0,0,0,0.025); }
+
+.sidebar-filter {
+  padding: 0 24px;
+  margin-bottom: 8px;
+}
+.filter-chip {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gray);
+  border: 1px solid var(--light-gray);
+  padding: 4px 10px;
+  margin: 3px 2px;
+  cursor: none;
+  transition: all 0.18s;
+  border-radius: 0;
+}
+.filter-chip:hover, .filter-chip.active { border-color: var(--black); color: var(--black); }
+
+/* Main project area */
+.proj-main {
+  margin-left: var(--nav-w);
+  min-height: calc(100vh - 56px);
+}
+
+/* Project list view */
+.proj-list-header {
+  display: grid;
+  grid-template-columns: 48px 2fr 1fr 1fr 80px;
+  padding: 14px 32px;
+  border-bottom: 1px solid var(--light-gray);
+  font-size: 8.5px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gray);
+}
+
+.proj-list-row {
+  display: grid;
+  grid-template-columns: 48px 2fr 1fr 1fr 80px;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--light-gray);
+  align-items: center;
+  cursor: none;
+  transition: background 0.18s;
+  min-height: 68px;
+}
+.proj-list-row:hover { background: #eeede8; }
+.proj-list-row:hover .proj-row-num { color: var(--black); }
+
+.proj-row-num { font-size: 9px; color: var(--gray); letter-spacing: 0.1em; }
+.proj-row-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.proj-row-type { font-size: 9.5px; color: var(--gray); letter-spacing: 0.08em; text-transform: uppercase; }
+.proj-row-year { font-size: 9.5px; color: var(--gray); }
+.proj-row-status {
+  font-size: 8.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gray);
+  border: 1px solid var(--light-gray);
+  padding: 3px 8px;
+  text-align: center;
+}
+.proj-row-status.built { border-color: var(--black); color: var(--black); }
+
+/* Project detail panel (slides in) */
+.proj-detail-overlay {
+  position: fixed;
+  top: 56px; right: 0;
+  width: calc(100% - var(--nav-w));
+  height: calc(100vh - 56px);
+  background: var(--white);
+  z-index: 200;
+  display: flex;
+  transform: translateX(100%);
+  transition: transform var(--transition);
+  overflow: hidden;
+  border-left: 1px solid var(--light-gray);
+}
+.proj-detail-overlay.open { transform: translateX(0); }
+
+.proj-detail-close {
+  position: absolute;
+  top: 24px; left: 24px;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gray);
+  cursor: none;
+  z-index: 10;
+  transition: color 0.2s;
+  background: none; border: none;
+  font-family: 'DM Mono', monospace;
+}
+.proj-detail-close:hover { color: var(--black); }
+
+.proj-detail-left {
+  width: 55%;
+  border-right: 1px solid var(--light-gray);
+  overflow-y: auto;
+  padding: 64px 48px 48px;
+}
+.proj-detail-right {
+  width: 45%;
+  overflow-y: auto;
+  padding: 64px 40px 48px;
+}
+
+.detail-num { font-size: 9px; color: var(--gray); letter-spacing: 0.2em; margin-bottom: 16px; }
+.detail-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(28px, 3vw, 48px);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin-bottom: 32px;
+}
+
+.detail-img {
+  width: 100%;
+  aspect-ratio: 16/10;
+  background: linear-gradient(135deg, #d6d4ce, #b8b6b0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: #aaa;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.detail-img-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.detail-img-sm {
+  aspect-ratio: 4/3;
+  background: linear-gradient(135deg, #ccc, #b0afa9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  color: #aaa;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.detail-meta-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 32px;
+}
+.detail-meta-table tr {
+  border-bottom: 1px solid var(--light-gray);
+}
+.detail-meta-table td {
+  padding: 10px 0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  vertical-align: top;
+}
+.detail-meta-table td:first-child {
+  color: var(--gray);
+  width: 120px;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.detail-desc {
+  font-family: 'Playfair Display', serif;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--mid);
+  margin-bottom: 28px;
+}
+
+.detail-section-label {
+  font-size: 8.5px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gray);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--light-gray);
+}
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+.detail-tag {
+  font-size: 8.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border: 1px solid var(--light-gray);
+  padding: 4px 10px;
+  color: var(--gray);
+}
+
+/* ── ABOUT PAGE ── */
+#about {
+  padding-top: 56px;
+  min-height: 100vh;
+}
+
+.about-hero {
+  padding: 72px 48px 64px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  border-bottom: 1px solid var(--light-gray);
+}
+.about-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(40px, 5vw, 72px);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+}
+.about-title span { color: var(--gray); font-style: italic; font-family: 'Playfair Display', serif; font-weight: 400; }
+.about-body {
+  font-family: 'Playfair Display', serif;
+  font-size: 17px;
+  line-height: 1.75;
+  color: var(--mid);
+  padding-top: 8px;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-bottom: 1px solid var(--light-gray);
+}
+.about-cell {
+  padding: 40px 36px;
+  border-right: 1px solid var(--light-gray);
+}
+.about-cell:last-child { border-right: none; }
+.about-cell-label {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gray);
+  margin-bottom: 16px;
+}
+.about-cell-content {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--mid);
+}
+
+.principles-section {
+  padding: 64px 48px;
+  border-bottom: 1px solid var(--light-gray);
+}
+.principles-title {
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gray);
+  margin-bottom: 40px;
+}
+.principles-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.principle-item {
+  padding: 28px 0;
+  border-top: 1px solid var(--light-gray);
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 20px;
+}
+.principle-num {
+  font-size: 11px;
+  color: var(--light-gray);
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  padding-top: 2px;
+}
+.principle-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+.principle-body { font-size: 11px; color: var(--gray); line-height: 1.7; }
+
+/* ── RESEARCH PAGE ── */
+#research {
+  padding-top: 56px;
+  min-height: 100vh;
+}
+
+.research-hero {
+  padding: 72px 48px 48px;
+  border-bottom: 1px solid var(--light-gray);
+}
+.research-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(36px, 4.5vw, 64px);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  margin-bottom: 24px;
+}
+.research-sub {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--gray);
+  max-width: 480px;
+  line-height: 1.8;
+}
+
+.research-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.research-card {
+  padding: 40px 40px 36px;
+  border-right: 1px solid var(--light-gray);
+  border-bottom: 1px solid var(--light-gray);
+  cursor: none;
+  transition: background 0.2s;
+}
+.research-card:nth-child(2n) { border-right: none; }
+.research-card:hover { background: #eeede8; }
+.research-card-num { font-size: 9px; color: var(--gray); letter-spacing: 0.2em; margin-bottom: 16px; }
+.research-card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin-bottom: 12px;
+}
+.research-card-body { font-size: 11px; color: var(--gray); line-height: 1.8; margin-bottom: 20px; }
+.research-card-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.research-tag {
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border: 1px solid var(--light-gray);
+  padding: 3px 8px;
+  color: var(--gray);
+}
+
+/* ── CONTACT PAGE ── */
+#contact {
+  padding-top: 56px;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.contact-left {
+  padding: 72px 48px;
+  border-right: 1px solid var(--light-gray);
+}
+.contact-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(36px, 4vw, 60px);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+  margin-bottom: 32px;
+}
+.contact-title span { font-family: 'Playfair Display', serif; font-style: italic; font-weight: 400; color: var(--gray); }
+.contact-info { margin-bottom: 48px; }
+.contact-info-row {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--light-gray);
+}
+.contact-info-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gray); width: 80px; flex-shrink: 0; }
+.contact-info-value { font-size: 12px; letter-spacing: 0.05em; color: var(--black); }
+
+.contact-right {
+  padding: 72px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.contact-form-title { font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gray); margin-bottom: 32px; }
+.form-group { margin-bottom: 0; }
+.form-field {
+  border-bottom: 1px solid var(--light-gray);
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s;
+}
+.form-field:focus-within { border-bottom-color: var(--black); }
+.form-label { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gray); }
+.form-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--black);
+  letter-spacing: 0.05em;
+  cursor: none;
+}
+.form-textarea {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--black);
+  letter-spacing: 0.05em;
+  resize: none;
+  min-height: 80px;
+  cursor: none;
+}
+.form-submit {
+  margin-top: 32px;
+  display: inline-block;
+  background: var(--black);
+  color: var(--white);
+  font-family: 'DM Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  border: none;
+  padding: 14px 32px;
+  cursor: none;
+  transition: opacity 0.2s;
+}
+.form-submit:hover { opacity: 0.7; }
+
+/* ── Footer ── */
+footer {
+  padding: 28px 48px;
+  border-top: 1px solid var(--light-gray);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--white);
+}
+footer .foot-left { font-size: 9px; letter-spacing: 0.15em; color: var(--gray); text-transform: uppercase; }
+footer .foot-right { font-size: 9px; letter-spacing: 0.15em; color: var(--gray); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: var(--light-gray); }
+
+/* ── Hover cursor class ── */
+a, button, .sidebar-item, .proj-list-row, .filter-chip, .research-card, .project-card-home {
+  cursor: none !important;
+}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<canvas id="inkCanvas"></canvas>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#" onclick="showPage('home')">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="94" height="94" fill="none" stroke="#0c0c0c" stroke-width="3"/>
+      <line x1="3" y1="97" x2="97" y2="3" stroke="#0c0c0c" stroke-width="3"/>
+      <path d="M10,75 C20,55 28,40 38,52 C48,64 52,72 62,58 C72,44 82,20 94,10" fill="none" stroke="#0c0c0c" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M3,85 C14,65 22,48 33,62 C44,76 48,84 58,68 C68,52 78,28 97,15" fill="none" stroke="#0c0c0c" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span class="nav-logo-text">Noyyal Studios</span>
+  </a>
+
+  <ul class="nav-links">
+    <li><a href="#" onclick="showPage('home')" id="nav-home" class="active">Index</a></li>
+    <li><a href="#" onclick="showPage('projects')" id="nav-projects">Projects</a></li>
+    <li><a href="#" onclick="showPage('research')" id="nav-research">Research</a></li>
+    <li><a href="#" onclick="showPage('about')" id="nav-about">Studio</a></li>
+    <li><a href="#" onclick="showPage('contact')" id="nav-contact">Contact</a></li>
+  </ul>
+
+  <div class="nav-right">Chennai, India</div>
+</nav>
+
+<!-- ══ HOME ══ -->
+<section class="page-section active" id="home">
+  <div class="home-hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">— Architecture & Research Studio</div>
+      <div class="hero-headline">
+        Space<br>as<br><em>inquiry.</em>
+      </div>
+      <div class="hero-footer-row">
+        <div class="hero-footer-text">
+          We design homes and research how architecture shapes human experience — rooted in the landscapes of South India.
+        </div>
+        <a class="hero-cta" href="#" onclick="showPage('projects')">View Work →</a>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="arch-lines">
+        <svg viewBox="0 0 340 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- grid lines -->
+          <line x1="0" y1="420" x2="340" y2="0" stroke="#d8d6d0" stroke-width="1"/>
+          <line x1="60" y1="420" x2="340" y2="60" stroke="#d8d6d0" stroke-width="0.5"/>
+          <line x1="0" y1="360" x2="280" y2="0" stroke="#d8d6d0" stroke-width="0.5"/>
+          <!-- architectural floor plan sketch -->
+          <rect x="40" y="80" width="180" height="220" stroke="#0c0c0c" stroke-width="1.5" fill="none"/>
+          <rect x="40" y="80" width="80" height="100" stroke="#0c0c0c" stroke-width="1" fill="none"/>
+          <rect x="120" y="80" width="100" height="60" stroke="#0c0c0c" stroke-width="1" fill="none"/>
+          <line x1="40" y1="200" x2="220" y2="200" stroke="#0c0c0c" stroke-width="0.75"/>
+          <line x1="120" y1="140" x2="120" y2="300" stroke="#0c0c0c" stroke-width="0.75"/>
+          <!-- door arcs -->
+          <path d="M40,180 A20,20 0 0,1 60,160" stroke="#888" stroke-width="0.75" fill="none"/>
+          <path d="M140,80 A20,20 0 0,0 160,100" stroke="#888" stroke-width="0.75" fill="none"/>
+          <!-- dimensions -->
+          <line x1="40" y1="320" x2="220" y2="320" stroke="#aaa" stroke-width="0.5"/>
+          <line x1="40" y1="315" x2="40" y2="325" stroke="#aaa" stroke-width="0.5"/>
+          <line x1="220" y1="315" x2="220" y2="325" stroke="#aaa" stroke-width="0.5"/>
+          <text x="120" y="336" font-family="DM Mono" font-size="9" fill="#aaa" text-anchor="middle">12.5 m</text>
+          <line x1="240" y1="80" x2="240" y2="300" stroke="#aaa" stroke-width="0.5"/>
+          <line x1="235" y1="80" x2="245" y2="80" stroke="#aaa" stroke-width="0.5"/>
+          <line x1="235" y1="300" x2="245" y2="300" stroke="#aaa" stroke-width="0.5"/>
+          <text x="256" y="195" font-family="DM Mono" font-size="9" fill="#aaa" text-anchor="middle">14 m</text>
+          <!-- north arrow -->
+          <line x1="295" y1="370" x2="295" y2="340" stroke="#0c0c0c" stroke-width="1"/>
+          <polygon points="295,335 290,348 295,344 300,348" fill="#0c0c0c"/>
+          <text x="295" y="383" font-family="DM Mono" font-size="8" fill="#aaa" text-anchor="middle">N</text>
+        </svg>
+      </div>
+      <div class="hero-right-label">Floor plan study — Residential Series I</div>
+    </div>
+  </div>
+
+  <div class="info-strip">
+    <div class="info-cell"><div class="num">12</div><div class="label">Built Projects</div></div>
+    <div class="info-cell"><div class="num">4</div><div class="label">Active Research</div></div>
+    <div class="info-cell"><div class="num">2018</div><div class="label">Founded</div></div>
+    <div class="info-cell"><div class="num">3</div><div class="label">Publications</div></div>
+  </div>
+
+  <div class="section-header">
+    <div class="section-title">Selected Work</div>
+    <a class="section-link" href="#" onclick="showPage('projects')">All Projects</a>
+  </div>
+
+  <div class="project-grid-home">
+    <div class="project-card-home" onclick="openProject(0)">
+      <div class="project-thumb"><div class="project-thumb-inner">Image Placeholder</div></div>
+      <div class="project-card-meta">
+        <div class="proj-num">NS — 001</div>
+        <div class="proj-name">House on the Slope</div>
+        <div class="proj-type">Residential · Coimbatore · 2023</div>
+      </div>
+    </div>
+    <div class="project-card-home" onclick="openProject(1)">
+      <div class="project-thumb"><div class="project-thumb-inner" style="background: linear-gradient(135deg, #c8c6be, #b4b2aa);">Image Placeholder</div></div>
+      <div class="project-card-meta">
+        <div class="proj-num">NS — 002</div>
+        <div class="proj-name">River Bend Residence</div>
+        <div class="proj-type">Residential · Palakkad · 2022</div>
+      </div>
+    </div>
+    <div class="project-card-home" onclick="openProject(2)">
+      <div class="project-thumb"><div class="project-thumb-inner" style="background: linear-gradient(135deg, #d0cec8, #bcbab4);">Image Placeholder</div></div>
+      <div class="project-card-meta">
+        <div class="proj-num">NS — 003</div>
+        <div class="proj-name">Threshold House</div>
+        <div class="proj-type">Residential · Chennai · 2024</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="studio-statement">
+    <div class="stmt-label">Practice</div>
+    <div class="stmt-text">
+      We believe architecture is a form of <em>slow research</em> — each house is also a question about how light falls, how a threshold feels, how a room decides to breathe.
+    </div>
+  </div>
+
+  <footer>
+    <div class="foot-left">© 2025 Noyyal Studios. All rights reserved.</div>
+    <div class="foot-right">Chennai, Tamil Nadu — India</div>
+  </footer>
+</section>
+
+<!-- ══ PROJECTS ══ -->
+<section class="page-section" id="projects">
+  <div class="proj-sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Filter by Type</div>
+      <div class="sidebar-filter">
+        <span class="filter-chip active" onclick="filterProjects('all', this)">All</span>
+        <span class="filter-chip" onclick="filterProjects('residential', this)">Residential</span>
+        <span class="filter-chip" onclick="filterProjects('research', this)">Research</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Filter by Year</div>
+      <a class="sidebar-item active" href="#" onclick="filterYear('all', this)">All Years</a>
+      <a class="sidebar-item" href="#" onclick="filterYear('2024', this)">2024</a>
+      <a class="sidebar-item" href="#" onclick="filterYear('2023', this)">2023</a>
+      <a class="sidebar-item" href="#" onclick="filterYear('2022', this)">2022</a>
+      <a class="sidebar-item" href="#" onclick="filterYear('2021', this)">2021</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Filter by Status</div>
+      <a class="sidebar-item active" href="#" onclick="filterStatus('all', this)">All</a>
+      <a class="sidebar-item" href="#" onclick="filterStatus('built', this)">Built</a>
+      <a class="sidebar-item" href="#" onclick="filterStatus('ongoing', this)">Ongoing</a>
+      <a class="sidebar-item" href="#" onclick="filterStatus('study', this)">Study</a>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Jump to</div>
+      <a class="sidebar-item" href="#" onclick="openProject(0)">House on the Slope</a>
+      <a class="sidebar-item" href="#" onclick="openProject(1)">River Bend Residence</a>
+      <a class="sidebar-item" href="#" onclick="openProject(2)">Threshold House</a>
+      <a class="sidebar-item" href="#" onclick="openProject(3)">Courtyard Research Home</a>
+      <a class="sidebar-item" href="#" onclick="openProject(4)">Weekend Retreat</a>
+      <a class="sidebar-item" href="#" onclick="openProject(5)">Urban Infill Study</a>
+    </div>
+  </div>
+
+  <div class="proj-main">
+    <div class="proj-list-header">
+      <span>#</span>
+      <span>Project</span>
+      <span>Type</span>
+      <span>Year</span>
+      <span>Status</span>
+    </div>
+
+    <div id="project-list">
+      <!-- rows injected by JS -->
+    </div>
+  </div>
+
+  <!-- Detail overlay -->
+  <div class="proj-detail-overlay" id="detailOverlay">
+    <button class="proj-detail-close" onclick="closeProject()">← Close</button>
+    <div class="proj-detail-left" id="detailLeft"><!-- injected --></div>
+    <div class="proj-detail-right" id="detailRight"><!-- injected --></div>
+  </div>
+</section>
+
+<!-- ══ RESEARCH ══ -->
+<section class="page-section" id="research">
+  <div class="research-hero">
+    <div class="research-title">Research &<br>Inquiry</div>
+    <div class="research-sub">Noyyal Studios maintains an active research practice examining how architecture responds to climate, memory, and lived experience in South India.</div>
+  </div>
+
+  <div class="research-grid">
+    <div class="research-card">
+      <div class="research-card-num">RS — 01 · Ongoing</div>
+      <div class="research-card-title">Vernacular Cooling in Dravidian Domestic Space</div>
+      <div class="research-card-body">An investigation into pre-industrial passive cooling strategies embedded in Tamil Nadu's traditional courtyard homes — and how they may inform contemporary residential design under warming climates.</div>
+      <div class="research-card-tags">
+        <span class="research-tag">Climate</span>
+        <span class="research-tag">Vernacular</span>
+        <span class="research-tag">Tamil Nadu</span>
+      </div>
+    </div>
+    <div class="research-card">
+      <div class="research-card-num">RS — 02 · Ongoing</div>
+      <div class="research-card-title">Threshold as Architectural Event</div>
+      <div class="research-card-body">A phenomenological study of entry sequences in South Indian homes — from the kolam-marked threshold to the transitional verandah — asking what it means for a building to mark arrival.</div>
+      <div class="research-card-tags">
+        <span class="research-tag">Phenomenology</span>
+        <span class="research-tag">Ritual</span>
+        <span class="research-tag">Domesticity</span>
+      </div>
+    </div>
+    <div class="research-card">
+      <div class="research-card-num">RS — 03 · Published 2023</div>
+      <div class="research-card-title">Light, Shadow, and the Brick Wall</div>
+      <div class="research-card-body">A material study tracing how brick — raw, plastered, exposed — mediates between inside and outside in contemporary residential buildings across Tamil Nadu and Kerala.</div>
+      <div class="research-card-tags">
+        <span class="research-tag">Materials</span>
+        <span class="research-tag">Light</span>
+        <span class="research-tag">Brick</span>
+      </div>
+    </div>
+    <div class="research-card">
+      <div class="research-card-num">RS — 04 · In Progress</div>
+      <div class="research-card-title">Room as Memory: Spatial Autobiography</div>
+      <div class="research-card-body">Collaborating with residents of long-inhabited homes to map how rooms accumulate meaning over generations — studying architecture as a container of personal and collective memory.</div>
+      <div class="research-card-tags">
+        <span class="research-tag">Memory</span>
+        <span class="research-tag">Participatory</span>
+        <span class="research-tag">Ethnography</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="foot-left">© 2025 Noyyal Studios</div>
+    <div class="foot-right">Research inquiries: studio@noyyal.studio</div>
+  </footer>
+</section>
+
+<!-- ══ ABOUT ══ -->
+<section class="page-section" id="about">
+  <div class="about-hero">
+    <div class="about-title">A studio that<br><span>asks questions.</span></div>
+    <div class="about-body">
+      Noyyal Studios is an architecture and research practice founded in Chennai. We work primarily on residential architecture and maintain a parallel research program examining how space, climate, and culture shape each other in South India.<br><br>
+      The studio takes its name from the Noyyal river — a tributary of the Kaveri — as a reminder that good architecture, like a river, is shaped by what it flows through.
+    </div>
+  </div>
+
+  <div class="about-grid">
+    <div class="about-cell">
+      <div class="about-cell-label">Location</div>
+      <div class="about-cell-content">Chennai, Tamil Nadu<br>India</div>
+    </div>
+    <div class="about-cell">
+      <div class="about-cell-label">Founded</div>
+      <div class="about-cell-content">2018<br>Principal Architect</div>
+    </div>
+    <div class="about-cell">
+      <div class="about-cell-label">Practice</div>
+      <div class="about-cell-content">Residential Architecture<br>Architectural Research<br>Design Consultancy</div>
+    </div>
+  </div>
+
+  <div class="principles-section">
+    <div class="principles-title">How we work</div>
+    <div class="principles-list">
+      <div class="principle-item">
+        <div class="principle-num">01</div>
+        <div>
+          <div class="principle-title">Site before form</div>
+          <div class="principle-body">Every design begins with deep site reading — sun, wind, view, memory. Form follows this understanding, never precedes it.</div>
+        </div>
+      </div>
+      <div class="principle-item">
+        <div class="principle-num">02</div>
+        <div>
+          <div class="principle-title">Material honesty</div>
+          <div class="principle-body">We work with local materials and express them directly. Brick is brick. Concrete is concrete. Concealment is not sophistication.</div>
+        </div>
+      </div>
+      <div class="principle-item">
+        <div class="principle-num">03</div>
+        <div>
+          <div class="principle-title">Slow design</div>
+          <div class="principle-body">We take on fewer projects to invest more time in each. Architecture built to outlast its architect deserves that patience.</div>
+        </div>
+      </div>
+      <div class="principle-item">
+        <div class="principle-num">04</div>
+        <div>
+          <div class="principle-title">Research-led practice</div>
+          <div class="principle-body">Every built project is also a research opportunity. Questions from the studio inform the page; answers on the page inform the studio.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="foot-left">© 2025 Noyyal Studios</div>
+    <div class="foot-right">Chennai, India</div>
+  </footer>
+</section>
+
+<!-- ══ CONTACT ══ -->
+<section class="page-section" id="contact">
+  <div class="contact-left">
+    <div class="contact-title">Let's<br><span>talk.</span></div>
+    <div class="contact-info">
+      <div class="contact-info-row">
+        <span class="contact-info-label">Studio</span>
+        <span class="contact-info-value">Chennai, Tamil Nadu, India</span>
+      </div>
+      <div class="contact-info-row">
+        <span class="contact-info-label">Email</span>
+        <span class="contact-info-value">studio@noyyal.studio</span>
+      </div>
+      <div class="contact-info-row">
+        <span class="contact-info-label">Enquiries</span>
+        <span class="contact-info-value">Residential projects & research collaborations welcome</span>
+      </div>
+      <div class="contact-info-row">
+        <span class="contact-info-label">Response</span>
+        <span class="contact-info-value">Within 3 working days</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="contact-right">
+    <div>
+      <div class="contact-form-title">Send an enquiry</div>
+      <div class="form-group">
+        <div class="form-field">
+          <label class="form-label">Your Name</label>
+          <input class="form-input" type="text" placeholder="Full name">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" placeholder="your@email.com">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Subject</label>
+          <input class="form-input" type="text" placeholder="e.g. Residential project enquiry">
+        </div>
+        <div class="form-field">
+          <label class="form-label">Message</label>
+          <textarea class="form-textarea" placeholder="Tell us about your project or enquiry…" rows="4"></textarea>
+        </div>
+        <button class="form-submit" onclick="handleContactSubmit()">Send Message</button>
+      </div>
+    </div>
+    <div style="font-size:9px; letter-spacing:0.15em; color:var(--gray); text-transform:uppercase; line-height:2;">
+      Noyyal Studios<br>Est. 2018 · Chennai
+    </div>
+  </div>
+</section>
+
+<script>
+// ══════════════════ DATA ══════════════════
+const projects = [
+  {
+    num: 'NS — 001', name: 'House on the Slope', type: 'Residential', year: '2023',
+    location: 'Coimbatore, Tamil Nadu', status: 'built', area: '280 sqm', program: 'Single family residence',
+    desc: 'A home carved into a laterite slope, mediating between the hillside and the valley below. The section defines three levels of inhabitation — each opening differently to the landscape.',
+    tags: ['Slope', 'Laterite', 'Section', 'Landscape']
+  },
+  {
+    num: 'NS — 002', name: 'River Bend Residence', type: 'Residential', year: '2022',
+    location: 'Palakkad, Kerala', status: 'built', area: '340 sqm', program: 'Family home',
+    desc: 'Sited on the bend of a seasonal river. The house is oriented around a central courtyard that frames the sound of water while protecting against monsoon flooding through a raised plinth.',
+    tags: ['Courtyard', 'Water', 'Monsoon', 'Kerala']
+  },
+  {
+    num: 'NS — 003', name: 'Threshold House', type: 'Residential', year: '2024',
+    location: 'Chennai, Tamil Nadu', status: 'ongoing', area: '210 sqm', program: 'Urban residence',
+    desc: 'A study in arrival — the house contains three distinct threshold moments before the primary living space. An urban house that borrows the logic of the traditional Tamil verandah.',
+    tags: ['Threshold', 'Urban', 'Verandah', 'Sequence']
+  },
+  {
+    num: 'NS — 004', name: 'Courtyard Research Home', type: 'Research', year: '2023',
+    location: 'Madurai, Tamil Nadu', status: 'study', area: '—', program: 'Research project',
+    desc: 'A speculative design exploring how the traditional agraharam courtyard typology can be re-interpreted for contemporary nuclear families. Published in the studio\'s research journal.',
+    tags: ['Courtyard', 'Agraharam', 'Speculative', 'Typology']
+  },
+  {
+    num: 'NS — 005', name: 'Weekend Retreat', type: 'Residential', year: '2021',
+    location: 'Kodaikanal, Tamil Nadu', status: 'built', area: '160 sqm', program: 'Holiday home',
+    desc: 'A small home in the Palani Hills — built almost entirely from locally quarried granite. The structure sits lightly on the land, organized around a single long view towards the valley.',
+    tags: ['Granite', 'Hills', 'Compact', 'View']
+  },
+  {
+    num: 'NS — 006', name: 'Urban Infill Study', type: 'Research', year: '2024',
+    location: 'Chennai, Tamil Nadu', status: 'study', area: '—', program: 'Urban research',
+    desc: 'An ongoing study mapping residential infill conditions across three Chennai neighbourhoods. Documents how buildings negotiate between party walls, setbacks, and light.',
+    tags: ['Urban', 'Infill', 'Chennai', 'Mapping']
+  }
+];
+
+// ══════════════════ NAVIGATION ══════════════════
+function showPage(id) {
+  document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('nav-' + id).classList.add('active');
+  window.scrollTo(0, 0);
+  if (id === 'projects') renderProjectList(projects);
+}
+
+// ══════════════════ PROJECT LIST ══════════════════
+function renderProjectList(list) {
+  const container = document.getElementById('project-list');
+  container.innerHTML = list.map((p, i) => `
+    <div class="proj-list-row" onclick="openProject(${projects.indexOf(p)})">
+      <span class="proj-row-num">${String(i + 1).padStart(2, '0')}</span>
+      <span class="proj-row-name">${p.name}</span>
+      <span class="proj-row-type">${p.type}</span>
+      <span class="proj-row-year">${p.year}</span>
+      <span class="proj-row-status ${p.status === 'built' ? 'built' : ''}">${p.status}</span>
+    </div>
+  `).join('');
+}
+
+// ══════════════════ FILTERS ══════════════════
+let activeType = 'all', activeYear = 'all', activeStatus = 'all';
+
+function applyFilters() {
+  let list = projects;
+  if (activeType !== 'all') list = list.filter(p => p.type.toLowerCase() === activeType);
+  if (activeYear !== 'all') list = list.filter(p => p.year === activeYear);
+  if (activeStatus !== 'all') list = list.filter(p => p.status === activeStatus);
+  renderProjectList(list);
+}
+
+function filterProjects(type, el) {
+  activeType = type;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  applyFilters();
+}
+function filterYear(year, el) {
+  activeYear = year;
+  document.querySelectorAll('.sidebar-section:nth-child(2) .sidebar-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  applyFilters();
+}
+function filterStatus(status, el) {
+  activeStatus = status;
+  document.querySelectorAll('.sidebar-section:nth-child(3) .sidebar-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  applyFilters();
+}
+
+// ══════════════════ PROJECT DETAIL ══════════════════
+function openProject(idx) {
+  const p = projects[idx];
+  document.getElementById('detailLeft').innerHTML = `
+    <div class="detail-num">${p.num}</div>
+    <div class="detail-title">${p.name}</div>
+    <div class="detail-img">Image Placeholder — ${p.name}</div>
+    <div class="detail-img-grid">
+      <div class="detail-img-sm">Detail 01</div>
+      <div class="detail-img-sm">Detail 02</div>
+      <div class="detail-img-sm">Section Drawing</div>
+      <div class="detail-img-sm">Floor Plan</div>
+    </div>
+  `;
+  document.getElementById('detailRight').innerHTML = `
+    <div style="height:48px;"></div>
+    <table class="detail-meta-table">
+      <tr><td>Location</td><td>${p.location}</td></tr>
+      <tr><td>Year</td><td>${p.year}</td></tr>
+      <tr><td>Program</td><td>${p.program}</td></tr>
+      <tr><td>Area</td><td>${p.area}</td></tr>
+      <tr><td>Status</td><td style="text-transform:capitalize">${p.status}</td></tr>
+      <tr><td>Type</td><td>${p.type}</td></tr>
+    </table>
+    <div class="detail-desc">${p.desc}</div>
+    <div class="detail-section-label">Keywords</div>
+    <div class="detail-tags">${p.tags.map(t => `<span class="detail-tag">${t}</span>`).join('')}</div>
+    <div style="margin-top:32px;">
+      <div class="detail-section-label">Next Project</div>
+      <div style="padding-top:16px; font-family:'Syne',sans-serif; font-size:14px; font-weight:700; cursor:none;" onclick="openProject(${(idx + 1) % projects.length})">${projects[(idx + 1) % projects.length].name} →</div>
+    </div>
+  `;
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function closeProject() {
+  document.getElementById('detailOverlay').classList.remove('open');
+}
+
+// ══════════════════ CONTACT ══════════════════
+function handleContactSubmit() {
+  alert('Thank you — we\'ll be in touch within 3 working days.');
+}
+
+// ══════════════════ CURSOR ══════════════════
+const cursor = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cursor.style.left = e.clientX + 'px';
+  cursor.style.top = e.clientY + 'px';
+});
+document.addEventListener('mouseover', e => {
+  if (e.target.closest('a, button, .proj-list-row, .project-card-home, .research-card, .filter-chip, .sidebar-item'))
+    cursor.classList.add('hover');
+});
+document.addEventListener('mouseout', e => {
+  if (e.target.closest('a, button, .proj-list-row, .project-card-home, .research-card, .filter-chip, .sidebar-item'))
+    cursor.classList.remove('hover');
+});
+
+// ══════════════════ INK CANVAS ══════════════════
+const canvas = document.getElementById('inkCanvas');
+const ctx = canvas.getContext('2d');
+function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+const particles = [];
+class InkParticle {
+  constructor(x, y, speed) {
+    this.x = x + (Math.random() - 0.5) * 14;
+    this.y = y + (Math.random() - 0.5) * 14;
+    this.size = Math.random() * 2 + 0.4;
+    this.opacity = Math.random() * 0.55 + 0.2;
+    this.life = 1;
+    this.decay = 0.022 + Math.random() * 0.025;
+    this.type = Math.random() < 0.45 ? 'dash' : 'dot';
+    this.angle = Math.random() * Math.PI * 2;
+    this.len = Math.random() * 9 + 2;
+    this.vx = (Math.random() - 0.5) * 0.3;
+    this.vy = (Math.random() - 0.5) * 0.3;
+  }
+  update() { this.life -= this.decay; this.x += this.vx; this.y += this.vy; }
+  draw() {
+    if (this.life <= 0) return;
+    ctx.save();
+    ctx.globalAlpha = this.life * this.opacity;
+    ctx.strokeStyle = '#0c0c0c';
+    ctx.fillStyle = '#0c0c0c';
+    ctx.lineWidth = this.size * 0.5;
+    if (this.type === 'dot') {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * 0.65, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.x + Math.cos(this.angle) * this.len, this.y + Math.sin(this.angle) * this.len);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+let lx = 0, ly = 0;
+document.addEventListener('mousemove', e => {
+  const dx = e.clientX - lx, dy = e.clientY - ly;
+  const spd = Math.sqrt(dx * dx + dy * dy);
+  lx = e.clientX; ly = e.clientY;
+  const n = Math.min(Math.floor(spd * 0.3) + 1, 5);
+  for (let i = 0; i < n; i++) particles.push(new InkParticle(e.clientX, e.clientY, spd));
+});
+
+(function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update();
+    particles[i].draw();
+    if (particles[i].life <= 0) particles.splice(i, 1);
+  }
+  requestAnimationFrame(loop);
+})();
+
+// Init project list
+renderProjectList(projects);
+</script>
+</body>
+</html>
