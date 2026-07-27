@@ -11,7 +11,7 @@ interface IntroLoaderProps {
 export default function IntroLoader({ onTransitionStart, onComplete }: IntroLoaderProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const logoRef = useRef<SVGSVGElement>(null);
+  const logoRef = useRef<HTMLImageElement>(null);
 
   const handleTransition = useCallback(() => {
     if (!containerRef.current || !videoRef.current || !logoRef.current) return;
@@ -95,7 +95,6 @@ export default function IntroLoader({ onTransitionStart, onComplete }: IntroLoad
         x: targetX,
         y: targetY,
         scale: scaleFactor,
-        color: "#0c0c0c",
         duration: 1.5,
         ease: "power4.inOut"
       }, 0);
@@ -139,22 +138,18 @@ export default function IntroLoader({ onTransitionStart, onComplete }: IntroLoad
       ref={containerRef}
       className="fixed inset-0 bg-black z-[9999] flex items-center justify-center select-none overflow-hidden"
     >
-      {/* Centered SVG Logo (overlay on top of final frame of video, starts at opacity 0) */}
-      <svg
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         ref={logoRef}
-        viewBox="0 0 100 100"
-        className="fixed z-20 w-24 h-24 text-white opacity-0 pointer-events-none"
+        src="/n3.png"
+        alt="Noyyal Studios Logo"
+        className="fixed z-20 w-24 h-24 object-contain opacity-0 pointer-events-none"
         style={{
           left: "50%",
           top: "50%",
           transform: "translate(-50%, -50%)"
         }}
-      >
-        <rect x="3" y="3" width="94" height="94" fill="none" stroke="currentColor" strokeWidth="3"/>
-        <line x1="3" y1="97" x2="97" y2="3" stroke="currentColor" strokeWidth="3"/>
-        <path d="M10,75 C20,55 28,40 38,52 C48,64 52,72 62,58 C72,44 82,20 94,10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
-        <path d="M3,85 C14,65 22,48 33,62 C44,76 48,84 58,68 C68,52 78,28 97,15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-      </svg>
+      />
 
       <video
         ref={videoRef}
