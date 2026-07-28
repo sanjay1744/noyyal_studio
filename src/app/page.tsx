@@ -182,11 +182,19 @@ export default function HomePage() {
               key={project.num}
               className="group border-b md:border-b-0 md:border-r last:border-r-0 border-light-gray flex flex-col no-underline transition-colors duration-300 hover:bg-[#eeede8]"
             >
-              {/* Image Placeholder */}
+              {/* Image */}
               <div className="w-full aspect-[4/3] bg-light-gray overflow-hidden relative">
-                <div className="w-full h-full bg-gradient-to-br from-[#d6d4ce] via-[#c8c6bf] to-[#b8b6b0] flex items-center justify-center text-[9px] tracking-widest text-[#aaa] uppercase transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03]">
-                  Image Placeholder
-                </div>
+                {project.heroImage ? (
+                  <img
+                    src={project.heroImage}
+                    alt={project.name}
+                    className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-[#d6d4ce] via-[#c8c6bf] to-[#b8b6b0] flex items-center justify-center text-[9px] tracking-widest text-[#aaa] uppercase">
+                    Image Placeholder
+                  </div>
+                )}
               </div>
 
               {/* Meta */}
