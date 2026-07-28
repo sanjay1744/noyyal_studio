@@ -57,9 +57,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${syne.variable} ${dmMono.variable} ${playfair.variable} h-full antialiased`}
+      className={`${syne.variable} ${dmMono.variable} ${playfair.variable} h-full antialiased font-sans`}
     >
-      <body className="min-h-full flex flex-col bg-white text-black text-xs">
+      <body className="min-h-full flex flex-col bg-white text-black text-xs font-sans">
         <SmoothScroll />
         <CustomCursor />
         <InkCanvas />
