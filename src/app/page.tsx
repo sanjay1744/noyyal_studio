@@ -188,7 +188,7 @@ export default function HomePage() {
                   <img
                     src={project.heroImage}
                     alt={project.name}
-                    className="w-full h-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+                    className="w-full h-full object-cover filter grayscale contrast-[1.05] group-hover:grayscale-0 group-hover:contrast-100 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-[#d6d4ce] via-[#c8c6bf] to-[#b8b6b0] flex items-center justify-center text-[9px] tracking-widest text-[#aaa] uppercase">

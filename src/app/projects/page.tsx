@@ -187,9 +187,9 @@ function ProjectsContent() {
   return (
     <div className="w-full min-h-screen flex flex-col bg-[#faf9f6] text-[#111]">
       {/* ── TOP CONTROL & FILTER BAR ── */}
-      <header className="sticky top-14 z-30 w-full bg-[#faf9f6]/90 backdrop-blur-md border-b border-[#e5e3dc] px-4 md:px-10 py-3.5 flex flex-col md:flex-row items-center justify-between gap-4 transition-all">
-        {/* Category Tabs with Animated Layout Pill */}
-        <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto scrollbar-none py-1">
+      <header className="sticky top-14 z-30 w-full bg-[#faf9f6]/95 backdrop-blur-md border-b border-[#e5e3dc] px-4 md:px-8 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3 transition-all select-none">
+        {/* Compact Category Filter Bar */}
+        <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto scrollbar-none py-0.5">
           {CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat;
             const count = categoryCounts[cat] || 0;
@@ -199,21 +199,21 @@ function ProjectsContent() {
                 key={cat}
                 onClick={() => handleCategorySelect(cat)}
                 className={clsx(
-                  "relative px-4 py-2 text-[10px] tracking-[0.2em] uppercase font-semibold transition-colors duration-300 rounded-full shrink-0 flex items-center gap-2 cursor-pointer select-none",
+                  "relative px-3.5 py-1.5 text-[9.5px] tracking-[0.18em] uppercase font-semibold transition-colors duration-300 rounded-full shrink-0 flex items-center gap-1.5 cursor-pointer",
                   isActive ? "text-black" : "text-[#777] hover:text-black"
                 )}
               >
                 {isActive && (
                   <motion.div
                     layoutId="activeCategoryPill"
-                    className="absolute inset-0 bg-[#e8e6df] rounded-full border border-[#d8d6ce] shadow-xs"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    className="absolute inset-0 bg-[#e8e6df] rounded-full border border-[#d8d6ce] shadow-2xs"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
                 <span className="relative z-10">{cat}</span>
                 <span 
                   className={clsx(
-                    "relative z-10 text-[9px] px-1.5 py-0.2 rounded-full font-mono transition-colors",
+                    "relative z-10 text-[8.5px] px-1.5 py-0.2 rounded-full font-mono transition-colors",
                     isActive ? "bg-black text-white" : "bg-[#eceae3] text-[#777]"
                   )}
                 >
@@ -225,14 +225,13 @@ function ProjectsContent() {
         </div>
 
         {/* Right Tools: Year Filter, Search & View Switcher */}
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-[#e5e3dc] pt-2 md:pt-0">
+        <div className="flex items-center gap-2.5 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-[#e5e3dc] pt-2 md:pt-0">
           {/* Year Filter dropdown */}
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] tracking-widest text-[#888] uppercase hidden lg:inline">Year:</span>
+          <div className="flex items-center gap-1.5">
             <select
               value={activeYear}
               onChange={(e) => setActiveYear(e.target.value)}
-              className="bg-[#f0eee8] text-[10px] tracking-widest uppercase border border-[#dcdcd4] rounded-full px-3 py-1.5 text-black font-mono outline-none focus:border-black cursor-pointer"
+              className="bg-[#f0eee8] text-[9.5px] tracking-widest uppercase border border-[#dcdcd4] rounded-full px-3 py-1 text-black font-mono outline-none focus:border-black cursor-pointer"
             >
               {availableYears.map((yr) => (
                 <option key={yr} value={yr}>
@@ -244,18 +243,18 @@ function ProjectsContent() {
 
           {/* Search Box */}
           <div className="relative flex items-center">
-            <Search className="w-3.5 h-3.5 absolute left-3 text-[#888] pointer-events-none" />
+            <Search className="w-3 h-3 absolute left-2.5 text-[#888] pointer-events-none" />
             <input
               type="text"
-              placeholder="Search projects..."
+              placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-[#f0eee8] text-[10.5px] tracking-wide placeholder-[#999] border border-[#dcdcd4] rounded-full pl-8 pr-3 py-1.5 w-36 sm:w-44 outline-none focus:border-black transition-all focus:w-52"
+              className="bg-[#f0eee8] text-[10px] tracking-wide placeholder-[#999] border border-[#dcdcd4] rounded-full pl-7 pr-3 py-1 w-28 sm:w-36 outline-none focus:border-black transition-all focus:w-44"
             />
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery("")} 
-                className="absolute right-2.5 text-[#888] hover:text-black cursor-pointer"
+                className="absolute right-2 text-[#888] hover:text-black cursor-pointer"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -263,11 +262,11 @@ function ProjectsContent() {
           </div>
 
           {/* Grid / List Mode Switcher */}
-          <div className="flex items-center bg-[#eceae3] p-1 rounded-full border border-[#dcdcd4]">
+          <div className="flex items-center bg-[#eceae3] p-0.5 rounded-full border border-[#dcdcd4]">
             <button
               onClick={() => setViewMode("grid")}
               className={clsx(
-                "p-1.5 rounded-full transition-all cursor-pointer",
+                "p-1 rounded-full transition-all cursor-pointer",
                 viewMode === "grid" ? "bg-white text-black shadow-xs" : "text-[#777] hover:text-black"
               )}
               title="Grid View"
@@ -277,7 +276,7 @@ function ProjectsContent() {
             <button
               onClick={() => setViewMode("list")}
               className={clsx(
-                "p-1.5 rounded-full transition-all cursor-pointer",
+                "p-1 rounded-full transition-all cursor-pointer",
                 viewMode === "list" ? "bg-white text-black shadow-xs" : "text-[#777] hover:text-black"
               )}
               title="Architectural List View"
@@ -289,14 +288,14 @@ function ProjectsContent() {
       </header>
 
       {/* ── MAIN CONTENT AREA ── */}
-      <main className="flex-grow px-4 md:px-10 py-8 max-w-[1700px] w-full mx-auto">
+      <main className="flex-grow px-4 md:px-10 py-6 max-w-[1700px] w-full mx-auto">
         {/* Results Metadata summary */}
-        <div className="flex items-center justify-between mb-6 border-b border-[#e5e3dc] pb-3 select-none">
-          <div className="text-[10px] tracking-[0.25em] text-[#777] uppercase font-mono">
+        <div className="flex items-center justify-between mb-5 border-b border-[#e5e3dc] pb-2.5 select-none">
+          <div className="text-[9.5px] tracking-[0.25em] text-[#777] uppercase font-mono">
             Showing <span className="text-black font-bold">{filteredProjects.length}</span> {activeCategory === "All" ? "Total Projects" : `${activeCategory} Projects`}
           </div>
           {searchQuery && (
-            <div className="text-[10px] text-[#777]">
+            <div className="text-[9.5px] text-[#777]">
               Filtering for &ldquo;<span className="text-black italic">{searchQuery}</span>&rdquo;
             </div>
           )}
@@ -482,7 +481,7 @@ function ProjectsContent() {
                             <img
                               src={p.heroImage}
                               alt={p.name}
-                              className="w-full h-full object-cover group-hover:scale-1.1 transition-transform"
+                              className="w-full h-full object-cover group-hover:scale-1.1 transition-transform duration-300"
                             />
                           </div>
                           <div>
