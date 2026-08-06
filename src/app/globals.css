@@ -8,7 +8,7 @@
   --gray: #888888;
   --light-gray: #d8d6d0;
   --mid: #444444;
-  --font-helvetica: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-inter: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 @theme {
@@ -20,20 +20,20 @@
   --color-light-gray: var(--light-gray);
   --color-mid: var(--mid);
   
-  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-syne: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-dm-mono: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-playfair: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: var(--font-inter), "Inter", sans-serif;
+  --font-syne: var(--font-inter), "Inter", sans-serif;
+  --font-dm-mono: var(--font-inter), "Inter", sans-serif;
+  --font-playfair: var(--font-inter), "Inter", sans-serif;
 }
 
 *, ::before, ::after {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   cursor: none;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -41,7 +41,7 @@ body {
 }
 
 .font-syne, .font-mono, .font-playfair, .font-sans {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 /* Custom Cursor Overrides */
