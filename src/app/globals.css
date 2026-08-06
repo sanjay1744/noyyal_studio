@@ -45,8 +45,10 @@ body {
 }
 
 /* Custom Cursor Overrides */
-a, button, [role="button"], .interactive-element {
-  cursor: none !important;
+@media (min-width: 768px) {
+  html, body, a, button, input, textarea, select, [role="button"], .interactive-element {
+    cursor: none !important;
+  }
 }
 
 /* Hide standard scrollbars */
