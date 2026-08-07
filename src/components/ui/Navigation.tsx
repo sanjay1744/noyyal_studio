@@ -54,7 +54,7 @@ const DROPDOWN_DATA: Record<"about" | "projects" | "research", DropdownCategory>
       {
         title: "Studio & Practice",
         desc: "Residential architecture and parallel spatial research programs.",
-        href: "/studio",
+        href: "/about-us",
         image: "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80",
         caption: "PHOTOGRAPH BY ARCHITECTURAL PRESS • ATELIER",
       },
@@ -196,22 +196,7 @@ export default function Navigation() {
         </Link>
 
         {/* DESKTOP NAV LINKS */}
-        <ul className="hidden md:flex items-center gap-8 list-none m-0 p-0 nav-fade-in">
-          <li>
-            <Link
-              href="/"
-              className={clsx(
-                "text-[10px] tracking-[0.22em] uppercase transition-colors duration-200 no-underline py-4 block",
-                pathname === "/" ? "text-black font-semibold" : "text-gray hover:text-black"
-              )}
-              onMouseEnter={() => {
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
-                setActiveTab(null);
-              }}
-            >
-              Index
-            </Link>
-          </li>
+        <ul className="hidden md:flex items-center gap-8 list-none m-0 p-0 nav-fade-in ml-auto">
 
           {/* PROJECTS DROPDOWN TRIGGER */}
           <li
@@ -285,21 +270,7 @@ export default function Navigation() {
             </Link>
           </li>
 
-          <li>
-            <Link
-              href="/studio"
-              className={clsx(
-                "text-[10px] tracking-[0.22em] uppercase transition-colors duration-200 no-underline py-4 block",
-                pathname === "/studio" ? "text-black font-semibold" : "text-gray hover:text-black"
-              )}
-              onMouseEnter={() => {
-                if (timeoutRef.current) clearTimeout(timeoutRef.current);
-                setActiveTab(null);
-              }}
-            >
-              Studio
-            </Link>
-          </li>
+
 
           <li>
             <Link
@@ -318,11 +289,7 @@ export default function Navigation() {
           </li>
         </ul>
 
-        {/* LOCATION BADGE & MOBILE MENU TOGGLE */}
         <div className="flex items-center gap-4">
-          <div className="text-[9px] tracking-[0.25em] text-gray uppercase hidden sm:block nav-fade-in">
-            Chennai, India
-          </div>
 
           <button
             onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -468,9 +435,6 @@ export default function Navigation() {
             className="md:hidden w-full bg-white border-b border-light-gray overflow-hidden z-40"
           >
             <div className="p-6 space-y-4 font-mono text-[12px] uppercase tracking-wider">
-              <Link href="/" className="block py-2 text-black border-b border-light-gray/50">
-                Index
-              </Link>
               <Link href="/about-us" className="block py-2 text-black border-b border-light-gray/50">
                 About Us
               </Link>
@@ -480,9 +444,7 @@ export default function Navigation() {
               <Link href="/research" className="block py-2 text-black border-b border-light-gray/50">
                 Research
               </Link>
-              <Link href="/studio" className="block py-2 text-black border-b border-light-gray/50">
-                Studio
-              </Link>
+
               <Link href="/contact" className="block py-2 text-black">
                 Contact
               </Link>
