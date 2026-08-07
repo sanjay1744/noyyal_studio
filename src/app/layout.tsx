@@ -65,7 +65,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${syne.variable} ${dmMono.variable} ${playfair.variable} h-full antialiased font-sans`}
     >
-      <body className="min-h-full flex flex-col bg-white text-black text-xs font-sans">
+      <body className="min-h-full flex flex-col text-black text-xs font-sans">
         <SmoothScroll />
         <CustomCursor />
         <InkCanvas />

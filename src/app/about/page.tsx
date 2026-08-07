@@ -8,15 +8,7 @@ import { ArrowUpRight, Compass, Layers, Sparkles, MapPin, Feather, Globe } from 
 
 export default function AboutPage() {
   return (
-    <div className="w-full min-h-screen flex flex-col bg-[#FAFAFA] text-[#111111] font-sans relative overflow-hidden select-none">
-      {/* ── BACKGROUND TECHNICAL DOTTED GRID ── */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-30 z-0"
-        style={{
-          backgroundImage: `radial-gradient(#111111 0.75px, transparent 0.75px)`,
-          backgroundSize: "28px 28px",
-        }}
-      />
+    <div className="w-full min-h-screen flex flex-col bg-transparent text-[#111111] font-sans relative overflow-hidden select-none">
 
       {/* Grid vertical reference guide lines */}
       <div className="absolute inset-0 pointer-events-none z-0 hidden lg:grid grid-cols-12 max-w-[1440px] mx-auto px-8 border-x border-[#222222]/10">

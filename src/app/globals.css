@@ -31,7 +31,29 @@
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image: 
+    /* Crisp Architectural Dot Matrix */
+    radial-gradient(rgba(12, 12, 12, 0.22) 1.2px, transparent 1.2px),
+    /* Subtle Drafting Grid Lines (24px grid) */
+    linear-gradient(to right, rgba(12, 12, 12, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(12, 12, 12, 0.05) 1px, transparent 1px),
+    /* Major Structural Grid Lines (120px grid) */
+    linear-gradient(to right, rgba(12, 12, 12, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(12, 12, 12, 0.1) 1px, transparent 1px);
+  background-size: 
+    24px 24px, 
+    24px 24px, 
+    24px 24px, 
+    120px 120px, 
+    120px 120px;
+  background-position: 
+    -0.5px -0.5px, 
+    0 0, 
+    0 0, 
+    0 0, 
+    0 0;
+  background-attachment: scroll;
   color: var(--foreground);
   font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   cursor: none;

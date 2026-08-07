@@ -51,7 +51,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="w-full min-h-screen flex flex-col bg-white">
+    <div className="w-full min-h-screen flex flex-col bg-transparent">
       <div className="flex-grow grid grid-cols-1 md:grid-cols-2 border-b border-light-gray select-none">
         {/* Left Side: Metadata & Details */}
         <div className="p-12 px-8 md:px-12 border-b md:border-b-0 md:border-r border-light-gray flex flex-col justify-between">

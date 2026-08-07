@@ -85,7 +85,7 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full min-h-screen flex flex-col bg-white">
+    <div ref={containerRef} className="w-full min-h-screen flex flex-col bg-transparent">
       {/* ── HERO SECTION ── */}
       <section className="w-full grid grid-cols-1 md:grid-cols-2 border-b border-light-gray">
         {/* Left Side Info */}

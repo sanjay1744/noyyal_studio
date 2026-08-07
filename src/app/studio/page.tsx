@@ -27,7 +27,7 @@ export default function StudioPage() {
   ];
 
   return (
-    <div className="w-full min-h-screen flex flex-col bg-white">
+    <div className="w-full min-h-screen flex flex-col bg-transparent">
       {/* ── HERO SECTION ── */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 p-12 px-8 md:px-12 border-b border-light-gray select-none">
         <h1 className="font-syne text-[clamp(40px,5vw,72px)] font-extrabold leading-[0.9] tracking-tighter mt-6">

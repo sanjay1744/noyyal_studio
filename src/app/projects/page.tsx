@@ -185,9 +185,9 @@ function ProjectsContent() {
   };
 
   return (
-    <div className="w-full min-h-screen flex flex-col bg-[#faf9f6] text-[#111]">
+    <div className="w-full min-h-screen flex flex-col bg-transparent text-[#111]">
       {/* ── TOP CONTROL & FILTER BAR ── */}
-      <header className="sticky top-14 z-30 w-full bg-[#faf9f6]/95 backdrop-blur-md border-b border-[#e5e3dc] px-4 md:px-8 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3 transition-all select-none">
+      <header className="sticky top-14 z-30 w-full bg-[#f4f3ef]/90 backdrop-blur-md border-b border-[#e5e3dc] px-4 md:px-8 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3 transition-all select-none">
         {/* Compact Category Filter Bar */}
         <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto scrollbar-none py-0.5">
           {CATEGORIES.map((cat) => {

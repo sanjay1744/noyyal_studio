@@ -14,7 +14,7 @@ export default function ResearchPage() {
   }, []);
 
   return (
-    <div className="w-full min-h-screen flex flex-col bg-white">
+    <div className="w-full min-h-screen flex flex-col bg-transparent">
       {/* ── HERO SECTION ── */}
       <section className="p-12 px-8 md:px-12 border-b border-light-gray select-none">
         <h1 className="font-syne text-[clamp(36px,4.5vw,64px)] font-extrabold leading-[0.9] tracking-tighter mb-6 mt-6">
