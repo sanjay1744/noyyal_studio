@@ -87,9 +87,9 @@ export default function HomePage() {
   return (
     <div ref={containerRef} className="w-full min-h-screen flex flex-col bg-transparent">
       {/* ── HERO SECTION ── */}
-      <section className="w-full grid grid-cols-1 md:grid-cols-2 border-b border-light-gray">
-        {/* Left Side Info */}
-        <div className="flex flex-col justify-between p-8 md:p-12 border-r border-light-gray min-h-[50vh] md:min-h-[calc(100vh-56px)]">
+      <section className="w-full grid grid-cols-1 md:grid-cols-10 border-b border-light-gray relative overflow-hidden">
+        {/* Left Side Info (40%) */}
+        <div className="md:col-span-4 flex flex-col justify-between p-8 md:p-12 min-h-[50vh] md:min-h-[calc(100vh-56px)] z-10">
           <div className="text-[9px] tracking-[0.3em] text-gray uppercase animate-eyebrow">
             — Architecture & Research Studio
           </div>
@@ -129,12 +129,12 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Right Side 3D Canvas */}
-        <div className="relative flex flex-col justify-end p-8 md:p-12 min-h-[50vh] md:min-h-[calc(100vh-56px)] overflow-hidden">
-          <div className="absolute inset-0 z-0">
+        {/* Right Side 3D Canvas (60%) */}
+        <div className="md:col-span-6 relative flex flex-col justify-end p-8 md:p-12 min-h-[50vh] md:min-h-[calc(100vh-56px)] overflow-hidden">
+          <div className="absolute inset-0 md:-left-20 z-0">
             <HeroCanvas />
           </div>
-          <div className="relative z-10 text-[9px] tracking-widest text-light-gray uppercase pointer-events-none mt-auto">
+          <div className="relative z-10 text-[9px] tracking-widest text-gray uppercase pointer-events-none mt-auto">
             Architectural Massing Study — Series I
           </div>
         </div>
