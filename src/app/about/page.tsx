@@ -8,15 +8,7 @@ import { ArrowUpRight, Compass, Layers, Sparkles, MapPin, Feather, Globe } from 
 
 export default function AboutPage() {
   return (
-    <div className="w-full min-h-screen flex flex-col bg-[#FAFAFA] text-[#111111] font-sans relative overflow-hidden select-none">
-      {/* ── BACKGROUND TECHNICAL DOTTED GRID ── */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-30 z-0"
-        style={{
-          backgroundImage: `radial-gradient(#111111 0.75px, transparent 0.75px)`,
-          backgroundSize: "28px 28px",
-        }}
-      />
+    <div className="w-full min-h-screen flex flex-col bg-transparent text-[#111111] font-sans relative overflow-hidden select-none">
 
       {/* Grid vertical reference guide lines */}
       <div className="absolute inset-0 pointer-events-none z-0 hidden lg:grid grid-cols-12 max-w-[1440px] mx-auto px-8 border-x border-[#222222]/10">
@@ -82,7 +74,7 @@ export default function AboutPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
 
             <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between text-white font-mono text-[9.5px] uppercase tracking-widest bg-black/60 backdrop-blur-md p-3 border border-white/10">
-              <span>PROJECT NS-001 // HOUSE ON THE SLOPE</span>
+              <span>HOUSE ON THE SLOPE</span>
               <span className="text-gray-300">COIMBATORE</span>
             </div>
           </div>

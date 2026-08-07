@@ -8,7 +8,7 @@
   --gray: #888888;
   --light-gray: #d8d6d0;
   --mid: #444444;
-  --font-helvetica: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-inter: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 @theme {
@@ -20,20 +20,42 @@
   --color-light-gray: var(--light-gray);
   --color-mid: var(--mid);
   
-  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-syne: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-dm-mono: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-playfair: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: var(--font-inter), "Inter", sans-serif;
+  --font-syne: var(--font-inter), "Inter", sans-serif;
+  --font-dm-mono: var(--font-inter), "Inter", sans-serif;
+  --font-playfair: var(--font-inter), "Inter", sans-serif;
 }
 
 *, ::before, ::after {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
+  background-image: 
+    /* Crisp Architectural Dot Matrix */
+    radial-gradient(rgba(12, 12, 12, 0.22) 1.2px, transparent 1.2px),
+    /* Subtle Drafting Grid Lines (24px grid) */
+    linear-gradient(to right, rgba(12, 12, 12, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(12, 12, 12, 0.05) 1px, transparent 1px),
+    /* Major Structural Grid Lines (120px grid) */
+    linear-gradient(to right, rgba(12, 12, 12, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(12, 12, 12, 0.1) 1px, transparent 1px);
+  background-size: 
+    24px 24px, 
+    24px 24px, 
+    24px 24px, 
+    120px 120px, 
+    120px 120px;
+  background-position: 
+    -0.5px -0.5px, 
+    0 0, 
+    0 0, 
+    0 0, 
+    0 0;
+  background-attachment: scroll;
   color: var(--foreground);
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
   cursor: none;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -41,12 +63,14 @@ body {
 }
 
 .font-syne, .font-mono, .font-playfair, .font-sans {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 /* Custom Cursor Overrides */
-a, button, [role="button"], .interactive-element {
-  cursor: none !important;
+@media (min-width: 768px) {
+  html, body, a, button, input, textarea, select, [role="button"], .interactive-element {
+    cursor: none !important;
+  }
 }
 
 /* Hide standard scrollbars */

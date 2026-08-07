@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { Syne, DM_Mono, Playfair_Display } from "next/font/google";
+import { Inter, Syne, DM_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import Navigation from "@/components/ui/Navigation";
 import CustomCursor from "@/components/ui/CustomCursor";
 import InkCanvas from "@/components/ui/InkCanvas";
 import SmoothScroll from "@/components/ui/SmoothScroll";
 import IntroWrapper from "@/components/ui/IntroWrapper";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 const syne = Syne({
   subsets: ["latin"],
@@ -57,9 +63,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${syne.variable} ${dmMono.variable} ${playfair.variable} h-full antialiased font-sans`}
+      className={`${inter.variable} ${syne.variable} ${dmMono.variable} ${playfair.variable} h-full antialiased font-sans`}
     >
-      <body className="min-h-full flex flex-col bg-white text-black text-xs font-sans">
+      <body className="min-h-full flex flex-col text-black text-xs font-sans">
         <SmoothScroll />
         <CustomCursor />
         <InkCanvas />

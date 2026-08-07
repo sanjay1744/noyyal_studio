@@ -185,9 +185,9 @@ function ProjectsContent() {
   };
 
   return (
-    <div className="w-full min-h-screen flex flex-col bg-[#faf9f6] text-[#111]">
+    <div className="w-full min-h-screen flex flex-col bg-transparent text-[#111]">
       {/* ── TOP CONTROL & FILTER BAR ── */}
-      <header className="sticky top-14 z-30 w-full bg-[#faf9f6]/95 backdrop-blur-md border-b border-[#e5e3dc] px-4 md:px-8 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3 transition-all select-none">
+      <header className="sticky top-14 z-30 w-full bg-[#f4f3ef]/90 backdrop-blur-md border-b border-[#e5e3dc] px-4 md:px-8 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3 transition-all select-none">
         {/* Compact Category Filter Bar */}
         <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto scrollbar-none py-0.5">
           {CATEGORIES.map((cat) => {
@@ -342,10 +342,7 @@ function ProjectsContent() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 opacity-40 group-hover:opacity-60 transition-opacity duration-300" />
 
                         {/* Top Badges */}
-                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-                          <span className="bg-black/75 backdrop-blur-md text-white text-[8.5px] font-mono tracking-widest uppercase px-2.5 py-1 rounded-sm border border-white/10">
-                            {p.num}
-                          </span>
+                        <div className="absolute top-3 right-3 flex items-center justify-end pointer-events-none">
                           <span 
                             className={clsx(
                               "text-[8px] font-mono tracking-widest uppercase px-2.5 py-1 rounded-sm border backdrop-blur-md font-semibold",
@@ -568,9 +565,6 @@ function ProjectsContent() {
                     <X className="w-3.5 h-3.5" />
                     <span>Close (ESC)</span>
                   </button>
-                  <span className="text-[10px] font-mono tracking-widest text-[#888] hidden sm:inline">
-                    {selectedProject.num}
-                  </span>
                 </div>
 
                 {/* Center Title */}
@@ -665,9 +659,6 @@ function ProjectsContent() {
                         <span className="text-[9.5px] font-mono tracking-widest uppercase bg-[#eceae3] px-2.5 py-0.5 rounded-xs text-black font-semibold">
                           {selectedProject.category}
                         </span>
-                        <span className="text-[9.5px] font-mono text-[#888] uppercase">
-                          {selectedProject.num}
-                        </span>
                       </div>
 
                       <h2 className="font-syne text-[clamp(24px,2.5vw,36px)] font-bold text-black leading-tight tracking-tight">
@@ -733,39 +724,10 @@ function ProjectsContent() {
                       </p>
                     </div>
 
-                    {/* Keywords / Tags */}
-                    <div>
-                      <div className="text-[9px] tracking-[0.25em] text-[#888] uppercase font-mono mb-2.5 font-semibold">
-                        Key Typologies & Materials
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedProject.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="text-[9px] font-mono tracking-wider uppercase border border-[#dcdcd4] px-2.5 py-1 text-[#555] bg-[#faf9f6] rounded-xs"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+
                   </div>
 
-                  {/* Footer Next Project Link inside Drawer */}
-                  <div className="mt-8 pt-6 border-t border-[#e5e3dc] flex items-center justify-between">
-                    <div>
-                      <span className="text-[8.5px] font-mono tracking-widest text-[#888] uppercase block">
-                        Next in Catalogue
-                      </span>
-                      <button
-                        onClick={handleNextProject}
-                        className="font-syne text-[14px] font-bold text-black hover:underline text-left flex items-center gap-1.5 mt-0.5 cursor-pointer"
-                      >
-                        <span>{allProjects[(selectedIdx + 1) % allProjects.length]?.name}</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+
                 </div>
               </div>
             </motion.aside>
