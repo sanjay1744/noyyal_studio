@@ -199,7 +199,6 @@ export default function HomePage() {
 
               {/* Meta */}
               <div className="p-6 md:p-8">
-                <div className="text-[9px] tracking-widest text-gray mb-1.5">{project.num}</div>
                 <div className="font-syne text-[15px] font-bold tracking-tight text-black leading-snug">
                   {project.name}
                 </div>

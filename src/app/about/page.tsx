@@ -74,7 +74,7 @@ export default function AboutPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
 
             <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between text-white font-mono text-[9.5px] uppercase tracking-widest bg-black/60 backdrop-blur-md p-3 border border-white/10">
-              <span>PROJECT NS-001 // HOUSE ON THE SLOPE</span>
+              <span>HOUSE ON THE SLOPE</span>
               <span className="text-gray-300">COIMBATORE</span>
             </div>
           </div>

@@ -33,8 +33,8 @@ export default function ResearchPage() {
             className="p-10 border-b border-light-gray md:border-r md:last:border-r-0 odd:border-r border-light-gray transition-colors duration-300 hover:bg-[#eeede8] flex flex-col justify-between group"
           >
             <div className="flex flex-col gap-4">
-              <div className="text-[9px] tracking-widest text-gray font-mono">
-                {article.num} · {article.status}
+              <div className="text-[9px] tracking-widest text-gray font-mono uppercase">
+                {article.status}
               </div>
               <h2 className="font-syne text-[20px] font-bold text-black tracking-tight leading-snug">
                 {article.title}

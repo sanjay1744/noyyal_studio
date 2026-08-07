@@ -69,7 +69,7 @@ export default function ArchitecturalAnatomyDiagram() {
           <span className="w-2 h-2 bg-[#111111]" />
           <span className="font-bold tracking-widest">Architectural Anatomy Diagram</span>
         </div>
-        <span className="text-gray">[SECTION NS-001 // TERRAIN INTEGRATION]</span>
+        <span className="text-gray">[TERRAIN INTEGRATION]</span>
       </div>
 
       {/* ── DIAGRAM CANVAS CONTAINER ── */}
