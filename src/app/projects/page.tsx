@@ -122,6 +122,15 @@ function ProjectsContent() {
     });
   }, [allProjects, activeCategory, activeYear, searchQuery]);
 
+  // Open detail panel
+  const handleOpenProject = (proj: Project, idx: number) => {
+    setSelectedProject(proj);
+    setSelectedIdx(idx);
+    setActiveGalleryIdx(0);
+    setIsOpen(true);
+    router.push(`/projects?open=${idx}${activeCategory !== "All" ? `&category=${activeCategory.toLowerCase()}` : ""}`, { scroll: false });
+  };
+
   // Close detail panel
   const handleCloseProject = useCallback(() => {
     setIsOpen(false);
