@@ -23,9 +23,11 @@ export default function Navigation() {
   }, []);
 
   // Close mobile menu on route changes
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setIsMobileOpen(false);
-  }, [pathname]);
+  }
 
   const navItems = [
     { label: "Projects", href: "/projects" },
@@ -99,6 +101,7 @@ export default function Navigation() {
                 <Link
                   key={item.label}
                   href={item.href}
+                  onClick={() => setIsMobileOpen(false)}
                   className="block py-2 text-black border-b border-light-gray/50 last:border-b-0"
                 >
                   {item.label}

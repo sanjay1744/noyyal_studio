@@ -185,6 +185,7 @@ export default function HomePage() {
               {/* Image */}
               <div className="w-full aspect-[4/3] bg-light-gray overflow-hidden relative">
                 {project.heroImage ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={project.heroImage}
                     alt={project.name}

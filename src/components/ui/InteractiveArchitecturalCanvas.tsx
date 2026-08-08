@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { Move, RefreshCw, Eye, Sparkles, Layers, Sliders } from "lucide-react";
 
 export default function InteractiveArchitecturalCanvas() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -64,7 +62,6 @@ export default function InteractiveArchitecturalCanvas() {
       // DRAW NOYYAL RIVER FLUID CONTOURS
       if (mode === "fluid" || mode === "speculative") {
         for (let i = 0; i < contourCount; i++) {
-          const offset = i * 22;
           const amplitude = 35 + i * 4;
           const opacity = Math.max(0.1, 1 - i / contourCount);
 

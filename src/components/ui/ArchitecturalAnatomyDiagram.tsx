@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Sun, Wind, Droplets, Layers, ArrowUpRight } from "lucide-react";
+import { Sun, Wind, Droplets, Layers } from "lucide-react";
 
 interface Hotspot {
   id: string;
@@ -105,7 +105,6 @@ export default function ArchitecturalAnatomyDiagram() {
         {/* INTERACTIVE HOTSPOT NODES */}
         {HOTSPOTS.map((hotspot) => {
           const isActive = activeHotspot.id === hotspot.id;
-          const Icon = hotspot.icon;
 
           return (
             <button

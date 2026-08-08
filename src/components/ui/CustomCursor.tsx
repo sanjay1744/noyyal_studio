@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { clsx } from "clsx";
+
+const emptySubscribe = () => () => {};
 
 export default function CustomCursor() {
   const cursorRef = useRef<HTMLDivElement>(null);
   const coordsRef = useRef<HTMLSpanElement>(null);
   const [hovered, setHovered] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   useEffect(() => {
-    setMounted(true);
 
     const updateCursor = (e: MouseEvent) => {
       const x = e.clientX;
