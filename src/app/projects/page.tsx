@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, Suspense } from "react";
+import { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -79,23 +79,6 @@ function ProjectsContent() {
     });
   }, [searchParams]);
 
-  // Keyboard navigation & escape listener
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
-      if (e.key === "Escape") {
-        handleCloseProject();
-      } else if (e.key === "ArrowRight") {
-        handleNextProject();
-      } else if (e.key === "ArrowLeft") {
-        handlePrevProject();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, selectedIdx, allProjects]);
-
   // Compute category counts
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { All: allProjects.length };
@@ -149,30 +132,47 @@ function ProjectsContent() {
   };
 
   // Close detail panel
-  const handleCloseProject = () => {
+  const handleCloseProject = useCallback(() => {
     setIsOpen(false);
     router.push(`/projects${activeCategory !== "All" ? `?category=${activeCategory.toLowerCase()}` : ""}`, { scroll: false });
-  };
+  }, [activeCategory, router]);
 
   // Switch to Next Project
-  const handleNextProject = () => {
+  const handleNextProject = useCallback(() => {
     if (allProjects.length === 0) return;
     const nextIdx = (selectedIdx + 1) % allProjects.length;
     setSelectedProject(allProjects[nextIdx]);
     setSelectedIdx(nextIdx);
     setActiveGalleryIdx(0);
     router.push(`/projects?open=${nextIdx}${activeCategory !== "All" ? `&category=${activeCategory.toLowerCase()}` : ""}`, { scroll: false });
-  };
+  }, [allProjects, selectedIdx, activeCategory, router]);
 
   // Switch to Prev Project
-  const handlePrevProject = () => {
+  const handlePrevProject = useCallback(() => {
     if (allProjects.length === 0) return;
     const prevIdx = (selectedIdx - 1 + allProjects.length) % allProjects.length;
     setSelectedProject(allProjects[prevIdx]);
     setSelectedIdx(prevIdx);
     setActiveGalleryIdx(0);
     router.push(`/projects?open=${prevIdx}${activeCategory !== "All" ? `&category=${activeCategory.toLowerCase()}` : ""}`, { scroll: false });
-  };
+  }, [allProjects, selectedIdx, activeCategory, router]);
+
+  // Keyboard navigation & escape listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+      if (e.key === "Escape") {
+        handleCloseProject();
+      } else if (e.key === "ArrowRight") {
+        handleNextProject();
+      } else if (e.key === "ArrowLeft") {
+        handlePrevProject();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, handleCloseProject, handleNextProject, handlePrevProject]);
 
   // Set active category filter
   const handleCategorySelect = (cat: CategoryFilter) => {
@@ -327,6 +327,7 @@ function ProjectsContent() {
                       {/* Image Container with Zoom & Floating Badges */}
                       <div className="w-full aspect-[16/11] bg-[#eae8e1] overflow-hidden relative">
                         {p.heroImage ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img
                             src={p.heroImage}
                             alt={p.name}
@@ -475,6 +476,7 @@ function ProjectsContent() {
                         <div className="flex items-center gap-3">
                           {/* Mini Thumbnail */}
                           <div className="w-9 h-7 bg-[#eae8e1] rounded-xs overflow-hidden shrink-0 hidden sm:block">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={p.heroImage}
                               alt={p.name}
@@ -639,6 +641,7 @@ function ProjectsContent() {
                               : "border-transparent opacity-60 hover:opacity-100"
                           )}
                         >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={imgUrl}
                             alt={`${selectedProject.name} thumbnail ${gIdx + 1}`}

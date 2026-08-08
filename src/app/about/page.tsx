@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import Footer from "@/components/ui/Footer";
 import ArchitecturalAnatomyDiagram from "@/components/ui/ArchitecturalAnatomyDiagram";
-import { ArrowUpRight, Compass, Layers, Sparkles, MapPin, Feather, Globe } from "lucide-react";
+import { ArrowUpRight, MapPin } from "lucide-react";
 
 export default function AboutPage() {
   return (
