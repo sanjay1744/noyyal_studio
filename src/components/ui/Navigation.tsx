@@ -31,6 +31,7 @@ export default function Navigation() {
     { label: "Projects", href: "/projects" },
     { label: "About Us", href: "/about-us" },
     { label: "Research", href: "/research" },
+    { label: "BTS", href: "/bts" },
     { label: "Contact", href: "/contact" },
   ];
 
