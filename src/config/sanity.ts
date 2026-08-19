@@ -32,6 +32,8 @@ export interface Project {
   tags: string[];
   heroImage: string;
   gallery: string[];
+  cinematicFrames?: string[];
+  cinematicVideo?: string;
 }
 
 export interface ResearchArticle {
@@ -42,8 +44,38 @@ export interface ResearchArticle {
   tags: string[];
 }
 
+// ── 3D CINEMATIC FRAME SEQUENCES ──
+export const NOOL_CINEMATIC_FRAMES: string[] = Array.from(
+  { length: 30 },
+  (_, i) => `/projects_/commercial/NOOL நூல்/frame_${String(i + 1).padStart(3, "0")}.jpg`
+);
+
+export const NOOL_CINEMATIC_VIDEO = "/projects_/commercial/nool/nool_cinematic.mp4";
+
 // ── MOCK DATA FALLBACKS ──
 export const MOCK_PROJECTS: Project[] = [
+  {
+    num: "NS — 000",
+    name: "NOOL நூல் Pavilion",
+    category: "Commercial",
+    type: "Commercial",
+    year: "2024",
+    location: "Coimbatore, Tamil Nadu",
+    status: "built",
+    area: "850 sqm",
+    program: "Textile & Craft Experience Pavilion",
+    desc: "A cinematic architectural exploration celebrating regional weaving traditions. The massing features sweeping curved geometric brickwork and light wells that transform with sunlight.",
+    tags: ["Craft", "Textile", "Brickwork", "Lightwell", "3D Shot"],
+    heroImage: "/projects_/commercial/nool/frame_022.jpg",
+    gallery: [
+      "/projects_/commercial/nool/frame_001.jpg",
+      "/projects_/commercial/nool/frame_007.jpg",
+      "/projects_/commercial/nool/frame_015.jpg",
+      "/projects_/commercial/nool/frame_022.jpg",
+      "/projects_/commercial/nool/frame_030.jpg"
+    ],
+    cinematicVideo: NOOL_CINEMATIC_VIDEO,
+  },
   {
     num: "NS — 001",
     name: "House on the Slope",

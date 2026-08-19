@@ -9,6 +9,8 @@ import {
   ProjectCategory 
 } from "@/config/sanity";
 import Footer from "@/components/ui/Footer";
+import CinematicScrollModal from "@/components/ui/CinematicScrollModal";
+import DrawerCinematicViewport from "@/components/ui/DrawerCinematicViewport";
 import { clsx } from "clsx";
 import { 
   Grid, 
@@ -22,7 +24,9 @@ import {
   Layers, 
   Tag, 
   ArrowUpRight,
-  Search
+  Search,
+  Box,
+  MoveDown
 } from "lucide-react";
 
 type CategoryFilter = "All" | ProjectCategory;
@@ -50,6 +54,7 @@ function ProjectsContent() {
   const [selectedIdx, setSelectedIdx] = useState<number>(-1);
   const [activeGalleryIdx, setActiveGalleryIdx] = useState<number>(0);
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [cinematicProject, setCinematicProject] = useState<Project | null>(null);
 
   // Fetch Projects Data
   useEffect(() => {
@@ -74,6 +79,9 @@ function ProjectsContent() {
           setSelectedIdx(idx);
           setActiveGalleryIdx(0);
           setIsOpen(true);
+          if (data[idx].cinematicFrames && data[idx].cinematicFrames!.length > 0) {
+            setCinematicProject(data[idx]);
+          }
         }
       }
     });
@@ -122,12 +130,17 @@ function ProjectsContent() {
     });
   }, [allProjects, activeCategory, activeYear, searchQuery]);
 
-  // Open detail panel
+  // Open detail panel or cinematic viewer
   const handleOpenProject = (proj: Project, idx: number) => {
     setSelectedProject(proj);
     setSelectedIdx(idx);
     setActiveGalleryIdx(0);
     setIsOpen(true);
+
+    if (proj.cinematicVideo || (proj.cinematicFrames && proj.cinematicFrames.length > 0)) {
+      setCinematicProject(proj);
+    }
+
     router.push(`/projects?open=${idx}${activeCategory !== "All" ? `&category=${activeCategory.toLowerCase()}` : ""}`, { scroll: false });
   };
 
@@ -341,22 +354,6 @@ function ProjectsContent() {
                         
                         {/* Gradient Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 opacity-40 group-hover:opacity-60 transition-opacity duration-300" />
-
-                        {/* Top Badges */}
-                        <div className="absolute top-3 right-3 flex items-center justify-end pointer-events-none">
-                          <span 
-                            className={clsx(
-                              "text-[8px] font-mono tracking-widest uppercase px-2.5 py-1 rounded-sm border backdrop-blur-md font-semibold",
-                              p.status === "built" 
-                                ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/30" 
-                                : p.status === "unbuilt"
-                                ? "bg-amber-950/80 text-amber-300 border-amber-500/30"
-                                : "bg-black/80 text-gray-200 border-white/20"
-                            )}
-                          >
-                            {p.status}
-                          </span>
-                        </div>
 
                         {/* Bottom Overlay Info on Hover */}
                         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white pointer-events-none opacity-90 group-hover:opacity-100 transition-opacity">
@@ -603,54 +600,63 @@ function ProjectsContent() {
 
               {/* Drawer Body Scroll Area */}
               <div className="flex-grow overflow-y-auto flex flex-col lg:flex-row">
-                {/* Left Side: Visual Media Gallery */}
+                {/* Left Side: Visual Media Gallery / Interactive 3D Video Viewport */}
                 <div className="w-full lg:w-[60%] border-r border-[#e5e3dc] p-6 lg:p-10 flex flex-col gap-6 bg-[#f0eee8]/50">
-                  {/* Hero Main Image with Fade Animation */}
-                  <div className="w-full aspect-[16/10] bg-black/5 rounded-sm overflow-hidden relative shadow-md group">
-                    <AnimatePresence mode="wait">
-                      <motion.img
-                        key={selectedProject.gallery[activeGalleryIdx] || selectedProject.heroImage}
-                        src={selectedProject.gallery[activeGalleryIdx] || selectedProject.heroImage}
-                        alt={selectedProject.name}
-                        initial={{ opacity: 0, scale: 1.02 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.35 }}
-                        className="w-full h-full object-cover"
-                      />
-                    </AnimatePresence>
-                    <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md text-white text-[9px] font-mono px-2.5 py-1 rounded-xs pointer-events-none">
-                      Photo {activeGalleryIdx + 1} of {selectedProject.gallery.length}
-                    </div>
-                  </div>
-
-                  {/* Thumbnail Selector Grid */}
-                  <div>
-                    <div className="text-[9px] tracking-[0.25em] text-[#888] uppercase font-mono mb-2.5 font-semibold">
-                      Architectural Views & Details
-                    </div>
-                    <div className="grid grid-cols-4 gap-3">
-                      {selectedProject.gallery.map((imgUrl, gIdx) => (
-                        <button
-                          key={gIdx}
-                          onClick={() => setActiveGalleryIdx(gIdx)}
-                          className={clsx(
-                            "aspect-[4/3] rounded-xs overflow-hidden border-2 transition-all relative cursor-pointer",
-                            activeGalleryIdx === gIdx
-                              ? "border-black scale-102 shadow-sm"
-                              : "border-transparent opacity-60 hover:opacity-100"
-                          )}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={imgUrl}
-                            alt={`${selectedProject.name} thumbnail ${gIdx + 1}`}
+                  {selectedProject.cinematicVideo ? (
+                    <DrawerCinematicViewport
+                      project={selectedProject}
+                      onOpenFullscreen={() => setCinematicProject(selectedProject)}
+                    />
+                  ) : (
+                    <>
+                      {/* Hero Main Image with Fade Animation */}
+                      <div className="w-full aspect-[16/10] bg-black/5 rounded-sm overflow-hidden relative shadow-md group">
+                        <AnimatePresence mode="wait">
+                          <motion.img
+                            key={selectedProject.gallery[activeGalleryIdx] || selectedProject.heroImage}
+                            src={selectedProject.gallery[activeGalleryIdx] || selectedProject.heroImage}
+                            alt={selectedProject.name}
+                            initial={{ opacity: 0, scale: 1.02 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.35 }}
                             className="w-full h-full object-cover"
                           />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                        </AnimatePresence>
+                        <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md text-white text-[9px] font-mono px-2.5 py-1 rounded-xs pointer-events-none">
+                          Photo {activeGalleryIdx + 1} of {selectedProject.gallery.length}
+                        </div>
+                      </div>
+
+                      {/* Thumbnail Selector Grid */}
+                      <div>
+                        <div className="text-[9px] tracking-[0.25em] text-[#888] uppercase font-mono mb-2.5 font-semibold">
+                          Architectural Views & Details
+                        </div>
+                        <div className="grid grid-cols-4 gap-3">
+                          {selectedProject.gallery.map((imgUrl, gIdx) => (
+                            <button
+                              key={gIdx}
+                              onClick={() => setActiveGalleryIdx(gIdx)}
+                              className={clsx(
+                                "aspect-[4/3] rounded-xs overflow-hidden border-2 transition-all relative cursor-pointer",
+                                activeGalleryIdx === gIdx
+                                  ? "border-black scale-102 shadow-sm"
+                                  : "border-transparent opacity-60 hover:opacity-100"
+                              )}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imgUrl}
+                                alt={`${selectedProject.name} thumbnail ${gIdx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Right Side: Detailed Project Specs & Narrative */}
@@ -727,14 +733,34 @@ function ProjectsContent() {
                       </p>
                     </div>
 
-
+                    {/* Launch 3D Cinematic Scroll Viewer Button if available */}
+                    {(selectedProject.cinematicVideo || (selectedProject.cinematicFrames && selectedProject.cinematicFrames.length > 0)) && (
+                      <div className="pt-2">
+                        <button
+                          onClick={() => setCinematicProject(selectedProject)}
+                          className="w-full py-3 px-4 bg-black text-white hover:bg-neutral-800 rounded-sm text-[10px] tracking-[0.2em] uppercase font-mono font-bold flex items-center justify-center gap-2.5 shadow-lg transition-all cursor-pointer group"
+                        >
+                          <Box className="w-4 h-4 text-emerald-400 group-hover:rotate-12 transition-transform" />
+                          <span>Launch Fullscreen 3D Cinematic Scroll View</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-
-
                 </div>
               </div>
             </motion.aside>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* ── FULLSCREEN 3D CINEMATIC SCROLL ANIMATION MODAL ── */}
+      <AnimatePresence>
+        {cinematicProject && (
+          <CinematicScrollModal
+            project={cinematicProject}
+            onClose={() => setCinematicProject(null)}
+          />
         )}
       </AnimatePresence>
     </div>
