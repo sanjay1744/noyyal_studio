@@ -305,14 +305,6 @@ export default function DrawerCinematicViewport({
             </div>
           )}
 
-          {/* Top Floating Badge */}
-          <div className="absolute top-3 left-3 z-30 pointer-events-none">
-            <span className="text-[8.5px] font-mono tracking-widest uppercase bg-black/80 backdrop-blur-md text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-semibold flex items-center gap-1.5 shadow-md">
-              <Sparkles className="w-3 h-3 text-emerald-400" />
-              Interactive 3D Video Viewport
-            </span>
-          </div>
-
           {/* Top Right Fullscreen Button */}
           <button
             onClick={onOpenFullscreen}

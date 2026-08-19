@@ -660,7 +660,7 @@ function ProjectsContent() {
                 </div>
 
                 {/* Right Side: Detailed Project Specs & Narrative */}
-                <div className="w-full lg:w-[40%] p-6 lg:p-10 flex flex-col justify-between bg-white">
+                <div className="w-full lg:w-[40%] p-6 lg:p-10 flex flex-col justify-between bg-white border-t lg:border-t-0 border-[#e5e3dc]">
                   <div className="space-y-8">
                     {/* Header */}
                     <div>
@@ -728,24 +728,30 @@ function ProjectsContent() {
                       <div className="text-[9px] tracking-[0.25em] text-[#888] uppercase font-mono mb-2 font-semibold">
                         Architectural Concept & Narrative
                       </div>
-                      <p className="font-playfair text-[15px] leading-relaxed text-[#333] border-l-2 border-black pl-4 py-1">
+                      <p className="font-playfair text-[15px] leading-relaxed text-[#333] border-l-2 border-black pl-4 py-1 m-0">
                         {selectedProject.desc}
                       </p>
                     </div>
+                  </div>
 
-                    {/* Launch 3D Cinematic Scroll Viewer Button if available */}
-                    {(selectedProject.cinematicVideo || (selectedProject.cinematicFrames && selectedProject.cinematicFrames.length > 0)) && (
-                      <div className="pt-2">
-                        <button
-                          onClick={() => setCinematicProject(selectedProject)}
-                          className="w-full py-3 px-4 bg-black text-white hover:bg-neutral-800 rounded-sm text-[10px] tracking-[0.2em] uppercase font-mono font-bold flex items-center justify-center gap-2.5 shadow-lg transition-all cursor-pointer group"
+                  {/* Bottom Fill Section: Spatial Design Focus & Tags */}
+                  <div className="pt-6 mt-6 border-t border-[#e5e3dc] flex flex-col gap-3">
+                    <div className="text-[9px] tracking-[0.25em] text-[#888] uppercase font-mono font-semibold">
+                      Spatial Taxonomy & Focus
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProject.tags.map((t, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[9px] font-mono tracking-wider bg-[#f4f3ef] text-[#444] border border-[#e5e3dc] px-2.5 py-1 rounded-xs uppercase font-medium"
                         >
-                          <Box className="w-4 h-4 text-emerald-400 group-hover:rotate-12 transition-transform" />
-                          <span>Launch Fullscreen 3D Cinematic Scroll View</span>
-                          <ArrowUpRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="text-[8.5px] font-mono text-[#999] tracking-widest uppercase mt-1">
+                      Noyyal Architectural Archive · Ref: {selectedProject.num}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -324,10 +324,6 @@ export default function CinematicScrollModal({
       {/* ── TOP HEADER ── */}
       <header className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between p-6 md:p-8 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-auto">
         <div className="flex items-center gap-3">
-          <span className="text-[9px] tracking-[0.25em] uppercase text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-3 py-1 rounded-full font-semibold flex items-center gap-1.5">
-            <Sparkles className="w-3 h-3 text-emerald-400" />
-            3D Cinematic Scene Tour
-          </span>
           <div>
             <h2 className="font-syne text-[18px] md:text-[22px] font-extrabold tracking-tight text-white m-0 leading-none">
               {project.name}
