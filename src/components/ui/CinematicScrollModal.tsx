@@ -2,7 +2,18 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Maximize2, Minimize2, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { 
+  X, 
+  Maximize2, 
+  Minimize2, 
+  ChevronLeft, 
+  ChevronRight, 
+  ChevronDown, 
+  ChevronUp, 
+  Scan, 
+  Eye, 
+  EyeOff 
+} from "lucide-react";
 import { Project } from "@/config/sanity";
 
 interface CinematicScrollModalProps {
@@ -73,6 +84,19 @@ export default function CinematicScrollModal({
   const [isVideoReady, setIsVideoReady] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [activeStopIndex, setActiveStopIndex] = useState<number>(0);
+  
+  // Mobile Efficiency & Fit States
+  const [objectFit, setObjectFit] = useState<"cover" | "contain">("cover");
+  const [isCardCollapsed, setIsCardCollapsed] = useState<boolean>(false);
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
+
+  // Auto-adapt for mobile viewports on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      setObjectFit("contain");
+      setIsCardCollapsed(true);
+    }
+  }, []);
 
   // Physics state
   const targetTimeRef = useRef<number>(0);
@@ -98,11 +122,9 @@ export default function CinematicScrollModal({
 
       const video = videoRef.current;
       if (video) {
-        // If jumping forward, use hardware 60fps video playback
         if (targetTime > video.currentTime) {
           video.play().catch(() => {});
         } else {
-          // If seeking backward, use fastSeek or currentTime
           if ("fastSeek" in video && typeof (video as HTMLVideoElement & { fastSeek: (t: number) => void }).fastSeek === "function") {
             (video as HTMLVideoElement & { fastSeek: (t: number) => void }).fastSeek(targetTime);
           } else {
@@ -136,20 +158,16 @@ export default function CinematicScrollModal({
       const stopTimes = getStopTimes();
 
       if (isInteractingRef.current || isDraggingRef.current) {
-        // User is scrolling / dragging
-        velocityRef.current *= 0.86; // Viscous damping
+        velocityRef.current *= 0.86;
         currentTimeRef.current += velocityRef.current;
         targetTimeRef.current = currentTimeRef.current;
 
-        // Pause native play so we scrub
         if (!video.paused) video.pause();
       } else {
-        // User released interaction: smooth spring lerp toward target stop time
         const targetT = targetTimeRef.current;
         const diff = targetT - video.currentTime;
 
         if (Math.abs(diff) > 0.05) {
-          // If video is playing towards target, check when to pause
           if (diff > 0 && video.paused) {
             video.play().catch(() => {});
           }
@@ -159,10 +177,8 @@ export default function CinematicScrollModal({
         }
       }
 
-      // Clamp time bounds [0, duration]
       currentTimeRef.current = Math.max(0, Math.min(dur, currentTimeRef.current));
 
-      // Apply currentTime safely WITHOUT decoder congestion (check video.seeking guard)
       if (!video.seeking && (isInteractingRef.current || isDraggingRef.current)) {
         if (Math.abs(video.currentTime - currentTimeRef.current) > 0.02) {
           if ("fastSeek" in video && typeof (video as HTMLVideoElement & { fastSeek: (t: number) => void }).fastSeek === "function") {
@@ -173,7 +189,6 @@ export default function CinematicScrollModal({
         }
       }
 
-      // Update active stop index
       let closestIdx = 0;
       let minDiff = Infinity;
       stopTimes.forEach((t, idx) => {
@@ -211,7 +226,6 @@ export default function CinematicScrollModal({
       clearTimeout(interactionTimeout);
       interactionTimeout = setTimeout(() => {
         isInteractingRef.current = false;
-        // Magnetic snap to closest stop time
         const stopTimes = getStopTimes();
         let closestIdx = 0;
         let minDiff = Infinity;
@@ -291,6 +305,8 @@ export default function CinematicScrollModal({
       } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
         const prev = (activeStopIndex - 1 + SCENES.length) % SCENES.length;
         jumpToScene(prev);
+      } else if (e.key === "f" || e.key === "F") {
+        setIsFocusMode((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -321,42 +337,85 @@ export default function CinematicScrollModal({
       transition={{ duration: 0.35 }}
       className="fixed inset-0 z-[1000] bg-black text-white flex flex-col justify-between overflow-hidden select-none font-mono"
     >
-      {/* ── TOP HEADER ── */}
-      <header className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between p-6 md:p-8 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-auto">
-        <div className="flex items-center gap-3">
-          <div>
-            <h2 className="font-syne text-[18px] md:text-[22px] font-extrabold tracking-tight text-white m-0 leading-none">
-              {project.name}
-            </h2>
-            <div className="text-[9px] text-[#aaa] tracking-widest uppercase mt-1">
-              {project.category} · {project.location}
+      {/* ── TOP HEADER (Hideable in Focus Mode) ── */}
+      <AnimatePresence>
+        {!isFocusMode && (
+          <motion.header
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.25 }}
+            className="absolute top-0 left-0 right-0 z-40 flex items-center justify-between p-3 sm:p-5 md:p-6 bg-gradient-to-b from-black/90 via-black/50 to-transparent pointer-events-auto gap-2"
+          >
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="min-w-0">
+                <h2 className="font-syne text-[13px] sm:text-[18px] md:text-[22px] font-extrabold tracking-tight text-white m-0 leading-tight truncate">
+                  {project.name}
+                </h2>
+                <div className="text-[7.5px] sm:text-[9px] text-[#aaa] tracking-widest uppercase mt-0.5 truncate">
+                  {project.category} · {project.location.split(",")[0]}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Minimal Controls */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={toggleFullscreenMode}
-            className="p-2.5 rounded-full bg-white/10 hover:bg-white hover:text-black transition-all cursor-pointer backdrop-blur-md text-white border border-white/20"
-            title="Toggle Fullscreen Mode"
-          >
-            {isFullscreen ? (
-              <Minimize2 className="w-4 h-4" />
-            ) : (
-              <Maximize2 className="w-4 h-4" />
-            )}
-          </button>
+            {/* Header Controls */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              {/* Fit Mode Toggle: Contain vs Cover */}
+              <button
+                onClick={() => setObjectFit(objectFit === "cover" ? "contain" : "cover")}
+                className="p-1.5 sm:p-2.5 rounded-full bg-white/10 hover:bg-white hover:text-black transition-all cursor-pointer backdrop-blur-md text-white border border-white/20 flex items-center gap-1 text-[8px] sm:text-[9px] tracking-wider uppercase px-2 sm:px-3"
+                title={objectFit === "cover" ? "Show Entire Uncropped Image (Contain)" : "Fill Screen (Cover)"}
+              >
+                <Scan className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>{objectFit === "cover" ? "Fit" : "Fill"}</span>
+              </button>
 
-          <button
-            onClick={onClose}
-            className="flex items-center gap-2 text-[10px] tracking-widest uppercase bg-white text-black font-bold px-4 py-2 rounded-full hover:bg-gray-200 transition-all cursor-pointer shadow-lg"
-          >
-            <X className="w-4 h-4" />
-            <span>Close (ESC)</span>
-          </button>
-        </div>
-      </header>
+              {/* Focus Mode (Hide UI) Toggle */}
+              <button
+                onClick={() => setIsFocusMode(true)}
+                className="p-1.5 sm:p-2.5 rounded-full bg-white/10 hover:bg-white hover:text-black transition-all cursor-pointer backdrop-blur-md text-white border border-white/20 hidden sm:flex"
+                title="Hide Controls (Focus View)"
+              >
+                <EyeOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              </button>
+
+              {/* Fullscreen Button */}
+              <button
+                onClick={toggleFullscreenMode}
+                className="p-1.5 sm:p-2.5 rounded-full bg-white/10 hover:bg-white hover:text-black transition-all cursor-pointer backdrop-blur-md text-white border border-white/20"
+                title="Toggle Fullscreen Mode"
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                ) : (
+                  <Maximize2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                )}
+              </button>
+
+              {/* Close Button */}
+              <button
+                onClick={onClose}
+                className="flex items-center gap-1 text-[8.5px] sm:text-[10px] tracking-widest uppercase bg-white text-black font-bold px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-full hover:bg-gray-200 transition-all cursor-pointer shadow-lg"
+              >
+                <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Close</span>
+              </button>
+            </div>
+          </motion.header>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Restore UI button when in Focus Mode */}
+      {isFocusMode && (
+        <button
+          onClick={() => setIsFocusMode(false)}
+          className="absolute top-3 right-3 z-50 p-2.5 rounded-full bg-black/80 text-white backdrop-blur-md border border-white/30 hover:bg-white hover:text-black transition-all cursor-pointer flex items-center gap-1.5 text-[9px] uppercase tracking-wider"
+          title="Restore Controls"
+        >
+          <Eye className="w-4 h-4" />
+          <span>Show UI</span>
+        </button>
+      )}
 
       {/* ── MAIN VIDEO & SCENE VIEWPORT ── */}
       <div
@@ -375,121 +434,155 @@ export default function CinematicScrollModal({
             preload="auto"
             muted
             playsInline
-            className="w-full h-full object-cover pointer-events-none"
+            className={`w-full h-full transition-all duration-300 pointer-events-none ${
+              objectFit === "cover" ? "object-cover" : "object-contain bg-black"
+            }`}
           />
         )}
 
         {/* Minimal Loader overlay while video initializes */}
         {!isVideoReady && (
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-20">
-            <div className="w-10 h-10 border-2 border-white/20 border-t-white rounded-full animate-spin mb-4" />
-            <div className="text-[10px] tracking-[0.25em] text-white/80 uppercase font-mono">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 border-2 border-white/20 border-t-white rounded-full animate-spin mb-3 sm:mb-4" />
+            <div className="text-[9px] sm:text-[10px] tracking-[0.25em] text-white/80 uppercase font-mono">
               Loading 3D Cinematic Scene...
             </div>
           </div>
         )}
 
-        {/* ── 5 MINIMALIST CHAPTER DOT NAVIGATION ── */}
-        <div className="absolute right-6 md:right-8 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-4 bg-black/50 backdrop-blur-xl px-2.5 py-5 rounded-full border border-white/15 shadow-2xl pointer-events-auto">
-          {SCENES.map((scene, idx) => {
-            const isActive = activeStopIndex === idx;
-            return (
-              <button
-                key={scene.num}
-                onClick={() => jumpToScene(idx)}
-                className="group relative flex items-center justify-center p-1.5 cursor-pointer"
-                title={`Jump to Scene ${scene.num}: ${scene.title}`}
-              >
-                <span
-                  className={`block rounded-full transition-all duration-300 ${
-                    isActive
-                      ? "w-3.5 h-3.5 bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)] scale-110"
-                      : "w-2 h-2 bg-white/40 hover:bg-white"
-                  }`}
-                />
-                <span className="absolute right-8 text-[9px] font-mono tracking-widest uppercase text-white opacity-0 group-hover:opacity-100 transition-opacity bg-black/90 border border-white/20 px-2.5 py-1 rounded-sm whitespace-nowrap pointer-events-none shadow-xl">
-                  {scene.num} · {scene.title}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ── SCENE EXPLANATION POP-UP CARD OVERLAY ── */}
-        <div className="absolute bottom-6 left-6 md:bottom-10 md:left-10 z-40 max-w-lg w-[calc(100%-48px)] sm:w-auto pointer-events-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentScene.num}
-              initial={{ opacity: 0, y: 25, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="bg-black/85 backdrop-blur-xl border border-white/20 rounded-lg p-6 shadow-2xl text-white relative overflow-hidden"
-            >
-              {/* Subtle Ambient Glow */}
-              <div className="absolute -top-12 -left-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
-              {/* Card Header */}
-              <div className="flex items-center justify-between gap-4 mb-3 border-b border-white/10 pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono tracking-widest uppercase bg-emerald-950/90 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-xs font-bold">
-                    SCENE {currentScene.num}
-                  </span>
-                  <span className="text-[9px] font-mono tracking-wider uppercase text-white/60">
-                    {currentScene.badge}
-                  </span>
-                </div>
-
-                {/* Prev / Next Scene Buttons */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() =>
-                      jumpToScene(
-                        (activeStopIndex - 1 + SCENES.length) % SCENES.length
-                      )
-                    }
-                    className="p-1 rounded-xs bg-white/10 hover:bg-white hover:text-black transition-colors cursor-pointer text-white"
-                    title="Previous Scene"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() =>
-                      jumpToScene((activeStopIndex + 1) % SCENES.length)
-                    }
-                    className="p-1 rounded-xs bg-white/10 hover:bg-white hover:text-black transition-colors cursor-pointer text-white"
-                    title="Next Scene"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Scene Title */}
-              <h3 className="font-syne text-[18px] md:text-[20px] font-bold text-white tracking-tight leading-snug mb-2">
-                {currentScene.title}
-              </h3>
-
-              {/* Scene Architectural Explanation */}
-              <p className="font-playfair text-[13px] md:text-[14px] leading-relaxed text-white/85 m-0 mb-4">
-                {currentScene.desc}
-              </p>
-
-              {/* Architectural Detail Pills */}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
-                {currentScene.details.map((detail, dIdx) => (
+        {/* ── 5 MINIMALIST CHAPTER DOT NAVIGATION (Hideable in Focus Mode) ── */}
+        {!isFocusMode && (
+          <div className="absolute right-1.5 sm:right-6 md:right-8 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-2 sm:gap-4 bg-[#1a1614]/55 backdrop-blur-xl px-1.5 py-3 sm:px-2.5 sm:py-5 rounded-full border border-[#4a3e35]/50 shadow-2xl pointer-events-auto">
+            {SCENES.map((scene, idx) => {
+              const isActive = activeStopIndex === idx;
+              return (
+                <button
+                  key={scene.num}
+                  onClick={() => jumpToScene(idx)}
+                  className="group relative flex items-center justify-center p-1 sm:p-1.5 cursor-pointer"
+                  title={`Jump to Scene ${scene.num}: ${scene.title}`}
+                >
                   <span
-                    key={dIdx}
-                    className="text-[8.5px] font-mono tracking-wider uppercase bg-white/10 text-white/90 border border-white/15 px-2.5 py-1 rounded-xs"
-                  >
-                    {detail}
+                    className={`block rounded-full transition-all duration-300 ${
+                      isActive
+                        ? "w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 bg-[#dda15e] shadow-[0_0_12px_rgba(221,161,94,0.85)] scale-110"
+                        : "w-1.5 h-1.5 sm:w-2 sm:h-2 bg-[#ede0d4]/40 hover:bg-[#fefae0]"
+                    }`}
+                  />
+                  <span className="absolute right-7 sm:right-8 text-[8px] sm:text-[9px] font-mono tracking-widest uppercase text-[#fefae0] opacity-0 group-hover:opacity-100 transition-opacity bg-[#1c1816]/95 border border-[#5c493c]/60 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-sm whitespace-nowrap pointer-events-none shadow-xl">
+                    {scene.num} · {scene.title}
                   </span>
-                ))}
-              </div>
-            </motion.div>
-          </AnimatePresence>
-        </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── SCENE EXPLANATION POP-UP CARD OVERLAY (Hideable in Focus Mode & Collapsible) ── */}
+        {!isFocusMode && (
+          <div className="absolute bottom-2 left-2 right-12 sm:right-auto sm:left-6 sm:bottom-6 md:left-10 md:bottom-10 z-40 max-w-lg sm:max-w-md md:max-w-lg pointer-events-auto">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentScene.num + (isCardCollapsed ? "-collapsed" : "-expanded")}
+                initial={{ opacity: 0, y: 15, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.96 }}
+                transition={{ duration: 0.25 }}
+                className="bg-[#1c1815]/75 backdrop-blur-xl border border-[#4a3b32]/60 rounded-lg p-3 sm:p-5 md:p-6 shadow-2xl text-[#fefae0] relative overflow-hidden"
+              >
+                {/* Ambient Glow */}
+                <div className="absolute -top-12 -left-12 w-32 h-32 bg-[#cb997e]/15 rounded-full blur-2xl pointer-events-none" />
+
+                {/* Card Header Bar */}
+                <div className="flex items-center justify-between gap-2 border-b border-[#4a3b32]/50 pb-2 sm:pb-3">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                    <span className="text-[8px] sm:text-[10px] font-mono tracking-widest uppercase bg-[#342820]/90 text-[#eddcd2] border border-[#7f5539]/60 px-1.5 py-0.5 sm:px-2.5 sm:py-0.5 rounded-xs font-bold shrink-0">
+                      SCENE {currentScene.num}
+                    </span>
+                    <span className="text-[7.5px] sm:text-[9px] font-mono tracking-wider uppercase text-[#ddb892]/80 truncate">
+                      {currentScene.badge}
+                    </span>
+                  </div>
+
+                  {/* Scene Jump & Card Collapse Controls */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() =>
+                        jumpToScene(
+                          (activeStopIndex - 1 + SCENES.length) % SCENES.length
+                        )
+                      }
+                      className="p-1 sm:p-1.5 rounded-xs bg-[#382b22]/70 hover:bg-[#eddcd2] hover:text-[#1c1815] border border-[#5c493c]/40 transition-colors cursor-pointer text-[#fefae0]"
+                      title="Previous Scene"
+                    >
+                      <ChevronLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        jumpToScene((activeStopIndex + 1) % SCENES.length)
+                      }
+                      className="p-1 sm:p-1.5 rounded-xs bg-[#382b22]/70 hover:bg-[#eddcd2] hover:text-[#1c1815] border border-[#5c493c]/40 transition-colors cursor-pointer text-[#fefae0]"
+                      title="Next Scene"
+                    >
+                      <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setIsCardCollapsed(!isCardCollapsed)}
+                      className="p-1 sm:p-1.5 rounded-xs bg-[#5c493c]/60 hover:bg-[#eddcd2] hover:text-[#1c1815] border border-[#7f5539]/60 transition-colors cursor-pointer text-[#fefae0] ml-1 flex items-center gap-0.5 text-[8px] font-mono"
+                      title={isCardCollapsed ? "Expand Details" : "Collapse Card"}
+                    >
+                      {isCardCollapsed ? (
+                        <>
+                          <ChevronUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          <span className="hidden sm:inline">More</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          <span className="hidden sm:inline">Hide</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Scene Title */}
+                <h3 className="font-syne text-[13px] sm:text-[18px] md:text-[20px] font-bold text-[#fefae0] tracking-tight leading-snug mt-2 mb-1 truncate">
+                  {currentScene.title}
+                </h3>
+
+                {/* Expanded Details Section */}
+                {!isCardCollapsed && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {/* Scene Architectural Explanation */}
+                    <p className="font-playfair text-[11px] sm:text-[13px] md:text-[14px] leading-relaxed text-[#ede0d4]/90 m-0 mb-3 sm:mb-4 line-clamp-3 sm:line-clamp-none">
+                      {currentScene.desc}
+                    </p>
+
+                    {/* Architectural Detail Pills */}
+                    <div className="flex flex-wrap gap-1 sm:gap-2 pt-2 border-t border-[#4a3b32]/50">
+                      {currentScene.details.map((detail, dIdx) => (
+                        <span
+                          key={dIdx}
+                          className="text-[7.5px] sm:text-[8.5px] font-mono tracking-wider uppercase bg-[#382b22]/50 text-[#e6ccb2] border border-[#5c493c]/40 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-xs"
+                        >
+                          {detail}
+                        </span>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </motion.div>
   );
 }
+
