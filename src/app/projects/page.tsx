@@ -11,6 +11,7 @@ import {
 import Footer from "@/components/ui/Footer";
 import CinematicScrollModal from "@/components/ui/CinematicScrollModal";
 import DrawerCinematicViewport from "@/components/ui/DrawerCinematicViewport";
+import dynamic from "next/dynamic";
 import { clsx } from "clsx";
 import { 
   Grid, 
@@ -26,7 +27,8 @@ import {
   ArrowUpRight,
   Search,
   Box,
-  MoveDown
+  MoveDown,
+  Sparkles
 } from "lucide-react";
 
 type CategoryFilter = "All" | ProjectCategory;
@@ -39,6 +41,19 @@ const CATEGORIES: CategoryFilter[] = [
   "Unbuilt"
 ];
 
+const VirtualGalleryHall = dynamic(
+  () => import("@/components/three/VirtualGalleryHall"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[650px] flex flex-col items-center justify-center bg-neutral-950 text-white font-mono text-xs tracking-widest uppercase rounded-2xl">
+        <div className="w-10 h-10 border-2 border-white/20 border-t-amber-400 rounded-full animate-spin mb-4" />
+        <span>Loading 3D Exhibition Hall...</span>
+      </div>
+    ),
+  }
+);
+
 function ProjectsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -47,7 +62,7 @@ function ProjectsContent() {
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("All");
   const [activeYear, setActiveYear] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "3d">("grid");
 
   // Selected project drawer state
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -274,7 +289,7 @@ function ProjectsContent() {
             )}
           </div>
 
-          {/* Grid / List Mode Switcher */}
+          {/* Grid / List / 3D Mode Switcher */}
           <div className="flex items-center bg-[#eceae3] p-0.5 rounded-full border border-[#dcdcd4]">
             <button
               onClick={() => setViewMode("grid")}
@@ -296,23 +311,52 @@ function ProjectsContent() {
             >
               <List className="w-3.5 h-3.5" />
             </button>
+            <button
+              onClick={() => setViewMode("3d")}
+              className={clsx(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-all cursor-pointer text-[10px] font-mono font-bold tracking-wider",
+                viewMode === "3d" ? "bg-black text-white shadow-md" : "text-[#555] hover:text-black hover:bg-black/5"
+              )}
+              title="Interactive 3D Exhibition Hall"
+            >
+              <Box className="w-3.5 h-3.5 text-amber-400" />
+              <span>3D HALL</span>
+            </button>
           </div>
         </div>
       </header>
 
       {/* ── MAIN CONTENT AREA ── */}
       <main className="flex-grow px-4 md:px-10 py-6 max-w-[1700px] w-full mx-auto">
-        {/* Results Metadata summary */}
-        <div className="flex items-center justify-between mb-5 border-b border-[#e5e3dc] pb-2.5 select-none">
-          <div className="text-[9.5px] tracking-[0.25em] text-[#777] uppercase font-mono">
-            Showing <span className="text-black font-bold">{filteredProjects.length}</span> {activeCategory === "All" ? "Total Projects" : `${activeCategory} Projects`}
-          </div>
-          {searchQuery && (
-            <div className="text-[9.5px] text-[#777]">
-              Filtering for &ldquo;<span className="text-black italic">{searchQuery}</span>&rdquo;
+        {/* Results Metadata summary (Hidden in 3D Mode) */}
+        {viewMode !== "3d" && (
+          <div className="flex items-center justify-between mb-5 border-b border-[#e5e3dc] pb-2.5 select-none">
+            <div className="text-[9.5px] tracking-[0.25em] text-[#777] uppercase font-mono">
+              Showing <span className="text-black font-bold">{filteredProjects.length}</span> {activeCategory === "All" ? "Total Projects" : `${activeCategory} Projects`}
             </div>
-          )}
-        </div>
+            {searchQuery && (
+              <div className="text-[9.5px] text-[#777]">
+                Filtering for &ldquo;<span className="text-black italic">{searchQuery}</span>&rdquo;
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── VIEW MODE: 3D EXHIBITION HALL ── */}
+        {viewMode === "3d" && (
+          <div className="w-full rounded-2xl overflow-hidden shadow-2xl border border-black/10">
+            <VirtualGalleryHall
+              allProjects={allProjects}
+              selectedCategory={activeCategory === "All" ? "Residences" : activeCategory}
+              onSelectCategory={(cat) => handleCategorySelect(cat)}
+              onBackToGrid={() => setViewMode("grid")}
+              onOpenProjectDrawer={(proj) => {
+                const idx = allProjects.indexOf(proj);
+                handleOpenProject(proj, idx);
+              }}
+            />
+          </div>
+        )}
 
         {/* ── VIEW MODE: GRID ── */}
         {viewMode === "grid" && (
