@@ -83,49 +83,50 @@ export default function DrawerCinematicViewport({
 
   // Mobile Efficiency & Fit States
   const [objectFit, setObjectFit] = useState<"cover" | "contain">("cover");
-  const [isCardCollapsed, setIsCardCollapsed] = useState<boolean>(false);
+  const [isCardCollapsed, setIsCardCollapsed] = useState<boolean>(true);
 
   // Auto-adapt on mobile
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth < 640) {
       setObjectFit("contain");
-      setIsCardCollapsed(true);
     }
   }, []);
 
-  // Physics state
-  const targetTimeRef = useRef<number>(0);
+  // Scene Paging State & Smooth Ease-InOut Animation Engine
+  const currentStopIndexRef = useRef<number>(0);
+  const lastStepTimeRef = useRef<number>(0);
   const currentTimeRef = useRef<number>(0);
-  const velocityRef = useRef<number>(0);
-  const isInteractingRef = useRef<boolean>(false);
-  const isDraggingRef = useRef<boolean>(false);
-  const lastPointerPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Time-based Ease-InOut Cubic transition refs for ultra-smooth, zero-frame-drop motion
+  const animStartTimeRef = useRef<number>(0);
+  const startVideoTimeRef = useRef<number>(0);
+  const targetVideoTimeRef = useRef<number>(0);
+  const animDurationRef = useRef<number>(1800); // 1.8 seconds slow cinematic transition
 
   const getStopTimes = useCallback(() => {
     const dur = videoDuration || 5;
     return STOP_RATIOS.map((r) => r * dur);
   }, [videoDuration]);
 
-  // Jump to specific stop point
+  // Jump to specific stop point with slow Ease-InOut Cubic transition
   const jumpToStopPoint = useCallback(
     (stopIdx: number) => {
-      const stopTimes = getStopTimes();
-      const targetTime = stopTimes[stopIdx] || 0;
-      targetTimeRef.current = targetTime;
-      setActiveStopIndex(stopIdx);
+      const validIdx = Math.max(0, Math.min(DRAWER_SCENES.length - 1, stopIdx));
+      const prevIdx = currentStopIndexRef.current;
+      currentStopIndexRef.current = validIdx;
+      lastStepTimeRef.current = Date.now();
 
-      const video = videoRef.current;
-      if (video) {
-        if (targetTime > video.currentTime) {
-          video.play().catch(() => {});
-        } else {
-          if ("fastSeek" in video && typeof (video as HTMLVideoElement & { fastSeek: (t: number) => void }).fastSeek === "function") {
-            (video as HTMLVideoElement & { fastSeek: (t: number) => void }).fastSeek(targetTime);
-          } else {
-            video.currentTime = targetTime;
-          }
-        }
-      }
+      const stopTimes = getStopTimes();
+      const targetT = stopTimes[validIdx] ?? 0;
+
+      animStartTimeRef.current = performance.now();
+      startVideoTimeRef.current = currentTimeRef.current;
+      targetVideoTimeRef.current = targetT;
+
+      const sceneDist = Math.abs(validIdx - prevIdx);
+      animDurationRef.current = sceneDist > 1 ? 2200 : 1800;
+
+      setActiveStopIndex(validIdx);
     },
     [getStopTimes]
   );
@@ -133,88 +134,55 @@ export default function DrawerCinematicViewport({
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       const dur = videoRef.current.duration;
-      setVideoDuration(dur);
-      setIsVideoReady(true);
-      videoRef.current.currentTime = 0;
+      if (dur && !isNaN(dur)) {
+        setVideoDuration(dur);
+        setIsVideoReady(true);
+        videoRef.current.currentTime = 0;
+      }
     }
   };
 
-  // 60FPS Video Scrub Loop
+  // 60FPS Video Scrub & Slow Smooth Ease-InOut Cubic Engine
   useEffect(() => {
     let rafId: number;
 
     const physicsLoop = () => {
       const video = videoRef.current;
-      if (!video) return;
+      const dur = videoDuration || video?.duration || 0;
 
-      const dur = videoDuration || 5;
-      const stopTimes = getStopTimes();
+      if (video && dur > 0) {
+        if (!video.paused) {
+          video.pause();
+        }
 
-      if (isInteractingRef.current || isDraggingRef.current) {
-        velocityRef.current *= 0.86;
-        currentTimeRef.current += velocityRef.current;
-        targetTimeRef.current = currentTimeRef.current;
-        if (!video.paused) video.pause();
-      } else {
-        const targetT = targetTimeRef.current;
-        const diff = targetT - video.currentTime;
+        const now = performance.now();
+        const elapsed = now - animStartTimeRef.current;
+        const duration = animDurationRef.current;
 
-        if (Math.abs(diff) > 0.05) {
-          if (diff > 0 && video.paused) {
-            video.play().catch(() => {});
-          }
+        if (elapsed < duration) {
+          const progress = Math.min(1, elapsed / duration);
+          const eased =
+            progress < 0.5
+              ? 4 * progress * progress * progress
+              : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+          currentTimeRef.current =
+            startVideoTimeRef.current +
+            (targetVideoTimeRef.current - startVideoTimeRef.current) * eased;
         } else {
-          if (!video.paused) video.pause();
-          currentTimeRef.current = targetT;
+          currentTimeRef.current = targetVideoTimeRef.current;
         }
-      }
 
-      currentTimeRef.current = Math.max(0, Math.min(dur, currentTimeRef.current));
+        currentTimeRef.current = Math.max(0, Math.min(dur, currentTimeRef.current));
 
-      if (!video.seeking && (isInteractingRef.current || isDraggingRef.current)) {
-        if (Math.abs(video.currentTime - currentTimeRef.current) > 0.02) {
-          if ("fastSeek" in video && typeof (video as HTMLVideoElement & { fastSeek: (t: number) => void }).fastSeek === "function") {
-            (video as HTMLVideoElement & { fastSeek: (t: number) => void }).fastSeek(currentTimeRef.current);
-          } else {
+        if (!video.seeking && Math.abs(video.currentTime - currentTimeRef.current) > 0.005) {
+          try {
             video.currentTime = currentTimeRef.current;
+          } catch {
+            // Ignore race conditions
           }
         }
-      }
 
-      let closestIdx = 0;
-      let minDiff = Infinity;
-      stopTimes.forEach((t, idx) => {
-        const d = Math.abs(t - video.currentTime);
-        if (d < minDiff) {
-          minDiff = d;
-          closestIdx = idx;
-        }
-      });
-      setActiveStopIndex(closestIdx);
-
-      rafId = requestAnimationFrame(physicsLoop);
-    };
-
-    rafId = requestAnimationFrame(physicsLoop);
-    return () => cancelAnimationFrame(rafId);
-  }, [videoDuration, getStopTimes]);
-
-  // Wheel listener inside viewport
-  useEffect(() => {
-    let interactionTimeout: NodeJS.Timeout;
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      isInteractingRef.current = true;
-      const dur = videoDuration || 5;
-      const sensitivity = (dur / 30) * 0.005;
-      velocityRef.current += e.deltaY * sensitivity;
-
-      clearTimeout(interactionTimeout);
-      interactionTimeout = setTimeout(() => {
-        isInteractingRef.current = false;
         const stopTimes = getStopTimes();
         let closestIdx = 0;
         let minDiff = Infinity;
@@ -225,9 +193,40 @@ export default function DrawerCinematicViewport({
             closestIdx = idx;
           }
         });
-        targetTimeRef.current = stopTimes[closestIdx];
         setActiveStopIndex(closestIdx);
-      }, 180);
+      }
+
+      rafId = requestAnimationFrame(physicsLoop);
+    };
+
+    rafId = requestAnimationFrame(physicsLoop);
+    return () => cancelAnimationFrame(rafId);
+  }, [videoDuration, getStopTimes]);
+
+  // Wheel listener inside viewport (Slow Cinematic Paging with 1.4s Cooldown)
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (Math.abs(e.deltaY) < 6) return;
+
+      const now = Date.now();
+      if (now - lastStepTimeRef.current < 1400) {
+        return;
+      }
+
+      lastStepTimeRef.current = now;
+
+      if (e.deltaY > 0) {
+        // Scroll DOWN -> Advance to NEXT scene
+        const nextIdx = Math.min(DRAWER_SCENES.length - 1, currentStopIndexRef.current + 1);
+        jumpToStopPoint(nextIdx);
+      } else if (e.deltaY < 0) {
+        // Scroll UP -> Rewind to PREVIOUS scene
+        const prevIdx = Math.max(0, currentStopIndexRef.current - 1);
+        jumpToStopPoint(prevIdx);
+      }
     };
 
     const container = document.getElementById("drawer-viewport-container");
@@ -236,50 +235,44 @@ export default function DrawerCinematicViewport({
     }
 
     return () => {
-      clearTimeout(interactionTimeout);
       if (container) {
         container.removeEventListener("wheel", handleWheel);
       }
     };
-  }, [videoDuration, getStopTimes]);
+  }, [jumpToStopPoint]);
 
-  // Pointer & Drag
+  // Pointer & Drag (Slow Cinematic Paging on Drag)
+  const isDraggingRef = useRef<boolean>(false);
+  const touchStartYRef = useRef<number>(0);
+
   const handlePointerDown = (e: React.PointerEvent) => {
     isDraggingRef.current = true;
-    isInteractingRef.current = true;
-    lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
+    touchStartYRef.current = e.clientY;
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDraggingRef.current) return;
-    const deltaY = e.clientY - lastPointerPosRef.current.y;
-    const deltaX = e.clientX - lastPointerPosRef.current.x;
-    const delta = Math.abs(deltaY) > Math.abs(deltaX) ? deltaY : deltaX;
+    const deltaY = e.clientY - touchStartYRef.current;
 
-    const dur = videoDuration || 5;
-    const sensitivity = (dur / 30) * 0.012;
-    velocityRef.current += delta * sensitivity;
-
-    lastPointerPosRef.current = { x: e.clientX, y: e.clientY };
+    if (Math.abs(deltaY) > 40) {
+      const now = Date.now();
+      if (now - lastStepTimeRef.current >= 1200) {
+        if (deltaY < 0) {
+          // Drag UP -> Advance to NEXT scene
+          const nextIdx = Math.min(DRAWER_SCENES.length - 1, currentStopIndexRef.current + 1);
+          jumpToStopPoint(nextIdx);
+        } else {
+          // Drag DOWN -> Rewind to PREVIOUS scene
+          const prevIdx = Math.max(0, currentStopIndexRef.current - 1);
+          jumpToStopPoint(prevIdx);
+        }
+      }
+      isDraggingRef.current = false;
+    }
   };
 
   const handlePointerUp = () => {
     isDraggingRef.current = false;
-    setTimeout(() => {
-      isInteractingRef.current = false;
-      const stopTimes = getStopTimes();
-      let closestIdx = 0;
-      let minDiff = Infinity;
-      stopTimes.forEach((t, idx) => {
-        const d = Math.abs(t - currentTimeRef.current);
-        if (d < minDiff) {
-          minDiff = d;
-          closestIdx = idx;
-        }
-      });
-      targetTimeRef.current = stopTimes[closestIdx];
-      setActiveStopIndex(closestIdx);
-    }, 120);
   };
 
   const currentScene = DRAWER_SCENES[activeStopIndex] || DRAWER_SCENES[0];
@@ -290,6 +283,7 @@ export default function DrawerCinematicViewport({
       <div className="w-full aspect-[16/10] sm:aspect-[16/10] bg-black rounded-sm overflow-hidden relative shadow-lg group select-none">
         <div
           id="drawer-viewport-container"
+          data-lenis-prevent
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
