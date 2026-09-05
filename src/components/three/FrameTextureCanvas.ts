@@ -75,13 +75,13 @@ export function createFrameTexture(
       let drawW = innerWidth;
       let drawH = innerWidth / imgAspect;
 
-      if (drawH > innerHeight - 120) {
-        drawH = innerHeight - 120;
+      if (drawH > innerHeight - 140) {
+        drawH = innerHeight - 140;
         drawW = drawH * imgAspect;
       }
 
       const drawX = margin + (innerWidth - drawW) / 2;
-      const drawY = margin + ((innerHeight - 120) - drawH) / 2;
+      const drawY = margin + ((innerHeight - 140) - drawH) / 2;
 
       // Subtle drop shadow for artwork
       ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
@@ -96,18 +96,18 @@ export function createFrameTexture(
     } else {
       // Placeholder while image is downloading
       ctx.fillStyle = "#16181a";
-      ctx.fillRect(margin + 16, margin + 16, innerWidth - 32, innerHeight - 150);
+      ctx.fillRect(margin + 16, margin + 16, innerWidth - 32, innerHeight - 160);
       ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
-      ctx.font = "500 24px sans-serif";
+      ctx.font = "500 26px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("LOADING ARCHITECTURAL FRAME...", canvas.width / 2, canvas.height / 2 - 40);
     }
 
     // --- Museum Info Plaque Section at Bottom ---
-    const plaqueY = canvas.height - margin - 110;
+    const plaqueY = canvas.height - margin - 128;
     
     // Subtle divider line
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(margin + 20, plaqueY);
@@ -115,28 +115,28 @@ export function createFrameTexture(
     ctx.stroke();
 
     // Project Number / Category Tag (Left)
-    ctx.fillStyle = "rgba(255, 255, 255, 0.45)";
-    ctx.font = "600 20px monospace";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+    ctx.font = "600 24px monospace";
     ctx.textAlign = "left";
-    ctx.fillText(`${project.num || "NS"} — ${project.category.toUpperCase()}`, margin + 30, plaqueY + 40);
+    ctx.fillText(`${project.num || "NS"} — ${project.category.toUpperCase()}`, margin + 30, plaqueY + 36);
 
-    // Project Title (Left)
-    ctx.fillStyle = "#f3f4f6";
-    ctx.font = "600 32px sans-serif";
-    const titleText = project.name.length > 28 ? project.name.slice(0, 26) + "..." : project.name;
-    ctx.fillText(titleText, margin + 30, plaqueY + 80);
+    // Project Title (Left) - Substantially bigger, bolder, and crystal clear
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 44px system-ui, -apple-system, sans-serif";
+    const titleText = project.name.length > 22 ? project.name.slice(0, 20) + "..." : project.name;
+    ctx.fillText(titleText, margin + 30, plaqueY + 86);
 
     // Image Counter / Navigation Indicator (Right)
     const totalImgs = galleryImages.length;
-    ctx.fillStyle = isFocused ? "#ffffff" : "rgba(255, 255, 255, 0.6)";
-    ctx.font = "600 22px monospace";
+    ctx.fillStyle = isFocused ? "#ffffff" : "rgba(255, 255, 255, 0.85)";
+    ctx.font = "600 24px monospace";
     ctx.textAlign = "right";
-    ctx.fillText(`FRAME [${safeIdx + 1}/${totalImgs}]`, canvas.width - margin - 30, plaqueY + 40);
+    ctx.fillText(`FRAME [${safeIdx + 1}/${totalImgs}]`, canvas.width - margin - 30, plaqueY + 36);
 
     // Year & Location (Right)
-    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-    ctx.font = "400 20px sans-serif";
-    ctx.fillText(`${project.location} · ${project.year}`, canvas.width - margin - 30, plaqueY + 80);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+    ctx.font = "500 24px system-ui, -apple-system, sans-serif";
+    ctx.fillText(`${project.location} · ${project.year}`, canvas.width - margin - 30, plaqueY + 86);
 
     // Focus Indicator Badge if selected
     if (isFocused) {

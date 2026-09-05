@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { useGLTF, OrbitControls } from "@react-three/drei";
+import { useGLTF, OrbitControls, Html } from "@react-three/drei";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, AnimatePresence } from "framer-motion";
@@ -43,6 +43,7 @@ interface FrameData {
   matName: string;
   mesh: THREE.Mesh;
   worldPos: THREE.Vector3;
+  bottomCenterPos: THREE.Vector3;
   surfaceNormal: THREE.Vector3;
   quadGeom: THREE.BufferGeometry | null;
   project: Project | null;
@@ -53,83 +54,6 @@ function assignProjectsToFrames(sortedFrames: FrameData[], categoryProjects: Pro
     ...frame,
     project: categoryProjects[idx] || null,
   }));
-}
-
-function getMaterialWorldPositionAndNormal(mesh: THREE.Mesh, matName: string): { worldPos: THREE.Vector3; surfaceNormal: THREE.Vector3 } {
-  mesh.updateMatrixWorld(true);
-  const geom = mesh.geometry as THREE.BufferGeometry;
-  if (!geom || !geom.attributes.position) {
-    const pos = new THREE.Vector3();
-    mesh.getWorldPosition(pos);
-    return { worldPos: pos, surfaceNormal: new THREE.Vector3(0, 0, 1) };
-  }
-
-  const posAttr = geom.attributes.position;
-  const normAttr = geom.attributes.normal;
-  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-  const matIndex = materials.findIndex((m) => m.name === matName);
-
-  if (matIndex !== -1 && geom.groups && geom.groups.length > 0) {
-    const group = geom.groups.find((g) => g.materialIndex === matIndex);
-    if (group) {
-      let sumX = 0, sumY = 0, sumZ = 0;
-      let normX = 0, normY = 0, normZ = 0;
-      let count = 0;
-
-      const index = geom.index;
-      const start = group.start;
-      const end = group.start + group.count;
-
-      if (index) {
-        for (let i = start; i < end; i++) {
-          const vertexIdx = index.getX(i);
-          sumX += posAttr.getX(vertexIdx);
-          sumY += posAttr.getY(vertexIdx);
-          sumZ += posAttr.getZ(vertexIdx);
-          if (normAttr) {
-            normX += normAttr.getX(vertexIdx);
-            normY += normAttr.getY(vertexIdx);
-            normZ += normAttr.getZ(vertexIdx);
-          }
-          count++;
-        }
-      } else {
-        for (let i = start; i < end; i++) {
-          sumX += posAttr.getX(i);
-          sumY += posAttr.getY(i);
-          sumZ += posAttr.getZ(i);
-          if (normAttr) {
-            normX += normAttr.getX(i);
-            normY += normAttr.getY(i);
-            normZ += normAttr.getZ(i);
-          }
-          count++;
-        }
-      }
-
-      if (count > 0) {
-        const localCenter = new THREE.Vector3(sumX / count, sumY / count, sumZ / count);
-        const worldPos = mesh.localToWorld(localCenter);
-
-        let surfaceNormal = new THREE.Vector3(0, 0, 1);
-        if (normAttr && (normX !== 0 || normY !== 0 || normZ !== 0)) {
-          const localNormal = new THREE.Vector3(normX / count, normY / count, normZ / count).normalize();
-          const normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
-          surfaceNormal = localNormal.applyMatrix3(normalMatrix).normalize();
-        } else {
-          surfaceNormal = new THREE.Vector3(0, 0, 0).sub(worldPos);
-          surfaceNormal.y = 0;
-          surfaceNormal.normalize();
-        }
-
-        return { worldPos, surfaceNormal };
-      }
-    }
-  }
-
-  const fallbackPos = new THREE.Vector3();
-  mesh.getWorldPosition(fallbackPos);
-  return { worldPos: fallbackPos, surfaceNormal: new THREE.Vector3(0, 0, 1) };
 }
 
 // ── 3D SCENE CONTENT COMPONENT ──
@@ -184,6 +108,7 @@ function GallerySceneContent({
   // Gather frame meshes metadata and configure materials
   useEffect(() => {
     if (!scene) return;
+    scene.updateMatrixWorld(true);
 
     const extractedMap = new Map<string, FrameData>();
     const matMap = new Map<string, THREE.MeshStandardMaterial>();
@@ -213,6 +138,7 @@ function GallerySceneContent({
               transparent: false,
               opacity: 1.0,
             });
+            clonedMat.name = mat.name;
 
             if (Array.isArray(mesh.material)) {
               const idx = mesh.material.indexOf(mat);
@@ -223,10 +149,12 @@ function GallerySceneContent({
 
             matMap.set(mat.name, clonedMat);
 
-            const { worldPos, surfaceNormal } = getMaterialWorldPositionAndNormal(mesh, mat.name);
-
-            // Extract exact frame quad geometry in local space for pixel-perfect raycasting on the frame surface
+            // Extract exact frame quad geometry and compute exact center & normal
             let quadGeom: THREE.BufferGeometry | null = null;
+            let worldPos = new THREE.Vector3();
+            let bottomCenterPos = new THREE.Vector3();
+            let surfaceNormal = new THREE.Vector3(0, 0, 1);
+
             const geom = mesh.geometry as THREE.BufferGeometry;
             if (geom && geom.attributes.position) {
               const posAttr = geom.attributes.position;
@@ -237,7 +165,9 @@ function GallerySceneContent({
               const count = group ? group.count : posAttr.count;
 
               if (count >= 4) {
+                const box = new THREE.Box3();
                 const posArray = new Float32Array(count * 3);
+                const verts: THREE.Vector3[] = [];
                 for (let i = 0; i < count; i++) {
                   const vIdx = index ? index.getX(start + i) : (start + i);
                   const v = new THREE.Vector3(posAttr.getX(vIdx), posAttr.getY(vIdx), posAttr.getZ(vIdx));
@@ -245,6 +175,8 @@ function GallerySceneContent({
                   posArray[i * 3] = v.x;
                   posArray[i * 3 + 1] = v.y;
                   posArray[i * 3 + 2] = v.z;
+                  verts.push(v);
+                  box.expandByPoint(v);
                 }
                 quadGeom = new THREE.BufferGeometry();
                 quadGeom.setAttribute("position", new THREE.BufferAttribute(posArray, 3));
@@ -252,6 +184,27 @@ function GallerySceneContent({
                   quadGeom.setIndex([0, 1, 2, 0, 2, 3]);
                 }
                 quadGeom.computeVertexNormals();
+
+                // Exact geometric bounding-box center of the frame in scene space
+                worldPos = new THREE.Vector3();
+                box.getCenter(worldPos);
+
+                // Exact bottom-center position at the bottom of the picture frame
+                bottomCenterPos = new THREE.Vector3(
+                  worldPos.x,
+                  box.min.y + 0.10,
+                  worldPos.z
+                );
+
+                // Exact surface normal facing inward towards the room center
+                const e1 = verts[1].clone().sub(verts[0]);
+                const e2 = verts[2].clone().sub(verts[0]);
+                surfaceNormal = new THREE.Vector3().crossVectors(e1, e2).normalize();
+
+                const toCenter = new THREE.Vector3(0, worldPos.y, 0).sub(worldPos);
+                if (surfaceNormal.dot(toCenter) < 0) {
+                  surfaceNormal.negate();
+                }
               }
             }
 
@@ -260,6 +213,7 @@ function GallerySceneContent({
               matName: mat.name,
               mesh,
               worldPos,
+              bottomCenterPos,
               surfaceNormal,
               quadGeom,
               project: null,
@@ -325,19 +279,22 @@ function GallerySceneContent({
     gsap.killTweensOf(camera.position);
     gsap.killTweensOf(controlsRef.current.target);
 
+    const overviewCamPos = new THREE.Vector3(roomCenter.x + 2.2, roomCenter.y - 0.2, roomCenter.z);
+    const overviewTarget = new THREE.Vector3(roomCenter.x - 1.0, roomCenter.y - 0.2, roomCenter.z);
+
     if (focusedFrameIdx !== null && framesData[focusedFrameIdx]) {
       const frame = framesData[focusedFrameIdx];
       const framePos = frame.worldPos.clone().multiplyScalar(targetScale);
-      const normal = frame.surfaceNormal.clone();
 
-      // Position camera directly in front of the frame at a great framing distance
-      const targetCamPos = framePos.clone().add(normal.clone().multiplyScalar(1.8));
+      // Gentle, natural camera glide from overview towards the frame (stays 100% inside room interior)
+      const targetCamPos = overviewCamPos.clone().lerp(framePos, 0.28);
+      targetCamPos.y = THREE.MathUtils.lerp(overviewCamPos.y, framePos.y, 0.5);
 
       gsap.to(camera.position, {
         x: targetCamPos.x,
         y: targetCamPos.y,
         z: targetCamPos.z,
-        duration: 1.0,
+        duration: 0.8,
         ease: "power2.inOut",
         onUpdate: () => {
           if (controlsRef.current) controlsRef.current.update();
@@ -351,7 +308,7 @@ function GallerySceneContent({
         x: framePos.x,
         y: framePos.y,
         z: framePos.z,
-        duration: 1.0,
+        duration: 0.8,
         ease: "power2.inOut",
         onUpdate: () => {
           if (controlsRef.current) controlsRef.current.update();
@@ -359,9 +316,6 @@ function GallerySceneContent({
       });
     } else {
       // Return smoothly to hall overview (rotated 90 degrees to the left)
-      const overviewCamPos = new THREE.Vector3(roomCenter.x + 2.2, roomCenter.y - 0.2, roomCenter.z);
-      const overviewTarget = new THREE.Vector3(roomCenter.x - 1.0, roomCenter.y - 0.2, roomCenter.z);
-
       gsap.to(camera.position, {
         x: overviewCamPos.x,
         y: overviewCamPos.y,
@@ -420,7 +374,7 @@ function GallerySceneContent({
                 if (typeof window !== "undefined") {
                   window.dispatchEvent(
                     new CustomEvent("custom-cursor-hover", {
-                      detail: { hovering: true, label: frame.project ? "CLICK TO VIEW" : "COMING SOON" }
+                      detail: { hovering: true }
                     })
                   );
                 }
@@ -437,6 +391,63 @@ function GallerySceneContent({
             >
               <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
             </mesh>
+          );
+        })}
+
+        {/* 3D Shining Silver Interactive Hotspot Dot on Image Bottom-Center */}
+        {focusedFrameIdx === null && framesData.map((frame, idx) => {
+          if (!frame.project) return null;
+          return (
+            <group
+              key={`hotspot-${frame.matName}`}
+              position={[
+                frame.bottomCenterPos.x + frame.surfaceNormal.x * 0.04,
+                frame.bottomCenterPos.y,
+                frame.bottomCenterPos.z + frame.surfaceNormal.z * 0.04
+              ]}
+            >
+              <Html center distanceFactor={11} zIndexRange={[15, 0]}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onFrameClick(idx);
+                  }}
+                  onPointerOver={(e) => {
+                    e.stopPropagation();
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(
+                        new CustomEvent("custom-cursor-hover", {
+                          detail: { hovering: true }
+                        })
+                      );
+                    }
+                  }}
+                  onPointerOut={() => {
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(
+                        new CustomEvent("custom-cursor-hover", {
+                          detail: { hovering: false }
+                        })
+                      );
+                    }
+                  }}
+                  className="relative flex items-center justify-center group cursor-pointer focus:outline-none select-none transition-transform duration-200 hover:scale-125 active:scale-90"
+                  aria-label={`View ${frame.project.name}`}
+                >
+                  {/* Outer Pulsing Silver Ripple Wave */}
+                  <span className="absolute w-6 h-6 rounded-full border border-slate-200/80 animate-ping opacity-75 pointer-events-none" />
+
+                  {/* Soft Silver Aura Glow */}
+                  <span className="absolute w-7 h-7 rounded-full bg-slate-300/25 blur-[3px] animate-pulse pointer-events-none" />
+
+                  {/* Shining Metallic Silver Dot */}
+                  <div className="relative w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-slate-400 via-white to-slate-200 border border-white shadow-[0_0_10px_rgba(255,255,255,0.95),0_0_18px_rgba(210,230,255,0.7)] group-hover:shadow-[0_0_16px_rgba(255,255,255,1),0_0_24px_rgba(230,240,255,1)] transition-all">
+                    {/* Metallic Specular Highlight Glint */}
+                    <span className="absolute top-[2px] left-[2px] w-1 h-1 rounded-full bg-white opacity-95 pointer-events-none" />
+                  </div>
+                </button>
+              </Html>
+            </group>
           );
         })}
       </group>
