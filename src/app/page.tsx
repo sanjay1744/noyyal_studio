@@ -4,8 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { gsap } from "gsap";
+import { AnimatePresence } from "framer-motion";
+import { Box } from "lucide-react";
 import { getProjects, Project } from "@/config/sanity";
 import Footer from "@/components/ui/Footer";
+import CinematicScrollModal from "@/components/ui/CinematicScrollModal";
 
 // Dynamically import Three.js components to prevent SSR errors
 const HeroCanvas = dynamic(() => import("@/components/three/HeroCanvas"), {
@@ -19,6 +22,7 @@ const HeroCanvas = dynamic(() => import("@/components/three/HeroCanvas"), {
 
 export default function HomePage() {
   const [selectedProjects, setSelectedProjects] = useState<Project[]>([]);
+  const [cinematicProject, setCinematicProject] = useState<Project | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const descRef = useRef<HTMLDivElement>(null);
@@ -180,7 +184,7 @@ export default function HomePage() {
             <Link 
               href={`/projects?open=${index}`}
               key={project.num}
-              className="group border-b md:border-b-0 md:border-r last:border-r-0 border-light-gray flex flex-col no-underline transition-colors duration-300 hover:bg-[#eeede8]"
+              className="group border-b md:border-b-0 md:border-r last:border-r-0 border-light-gray flex flex-col no-underline transition-colors duration-300 hover:bg-[#eeede8] relative"
             >
               {/* Image */}
               <div className="w-full aspect-[4/3] bg-light-gray overflow-hidden relative">
@@ -223,6 +227,16 @@ export default function HomePage() {
       </section>
 
       <Footer />
+
+      {/* ── FULLSCREEN 3D CINEMATIC SCROLL ANIMATION MODAL ── */}
+      <AnimatePresence>
+        {cinematicProject && (
+          <CinematicScrollModal
+            project={cinematicProject}
+            onClose={() => setCinematicProject(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

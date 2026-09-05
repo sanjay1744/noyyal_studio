@@ -1,5 +1,5 @@
 import { createClient } from "next-sanity";
-import imageUrlBuilder from "@sanity/image-url";
+import { createImageUrlBuilder } from "@sanity/image-url";
 
 export const sanityConfig = {
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID || "placeholder-project-id",
@@ -10,7 +10,7 @@ export const sanityConfig = {
 
 export const sanityClient = createClient(sanityConfig);
 
-const builder = imageUrlBuilder(sanityClient);
+const builder = createImageUrlBuilder(sanityClient);
 export function urlFor(source: Parameters<typeof builder.image>[0]) {
   return builder.image(source);
 }
@@ -32,6 +32,8 @@ export interface Project {
   tags: string[];
   heroImage: string;
   gallery: string[];
+  cinematicFrames?: string[];
+  cinematicVideo?: string;
 }
 
 export interface ResearchArticle {
@@ -42,8 +44,38 @@ export interface ResearchArticle {
   tags: string[];
 }
 
+// ── 3D CINEMATIC FRAME SEQUENCES ──
+export const NOOL_CINEMATIC_FRAMES: string[] = Array.from(
+  { length: 30 },
+  (_, i) => `/projects_/commercial/NOOL நூல்/frame_${String(i + 1).padStart(3, "0")}.jpg`
+);
+
+export const NOOL_CINEMATIC_VIDEO = "/projects_/commercial/nool/nool_cinematic.mp4";
+
 // ── MOCK DATA FALLBACKS ──
 export const MOCK_PROJECTS: Project[] = [
+  {
+    num: "NS — 000",
+    name: "NOOL நூல் Pavilion",
+    category: "Commercial",
+    type: "Commercial",
+    year: "2024",
+    location: "Coimbatore, Tamil Nadu",
+    status: "built",
+    area: "850 sqm",
+    program: "Textile & Craft Experience Pavilion",
+    desc: "A cinematic architectural exploration celebrating regional weaving traditions. The massing features sweeping curved geometric brickwork and light wells that transform with sunlight.",
+    tags: ["Craft", "Textile", "Brickwork", "Lightwell", "3D Shot"],
+    heroImage: "/projects_/commercial/nool/frame_022.jpg",
+    gallery: [
+      "/projects_/commercial/nool/frame_001.jpg",
+      "/projects_/commercial/nool/frame_007.jpg",
+      "/projects_/commercial/nool/frame_015.jpg",
+      "/projects_/commercial/nool/frame_022.jpg",
+      "/projects_/commercial/nool/frame_030.jpg"
+    ],
+    cinematicVideo: NOOL_CINEMATIC_VIDEO,
+  },
   {
     num: "NS — 001",
     name: "House on the Slope",
@@ -56,12 +88,12 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Single family residence",
     desc: "A home carved into a laterite slope, mediating between the hillside and the valley below. The section defines three levels of inhabitation — each opening differently to the landscape.",
     tags: ["Slope", "Laterite", "Section", "Landscape"],
-    heroImage: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=85",
+    heroImage: "/projects_/RESIDENCE/THE BLOCK HOUSE/5.png",
     gallery: [
-      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=80"
+      "/projects_/RESIDENCE/THE BLOCK HOUSE/5.png",
+      "/projects_/RESIDENCE/THE BLOCK HOUSE/6.png",
+      "/projects_/RESIDENCE/THE BLOCK HOUSE/7.png",
+      "/projects_/RESIDENCE/THE BLOCK HOUSE/8.png"
     ]
   },
   {
@@ -76,11 +108,14 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Family home & courtyard",
     desc: "Sited on the bend of a seasonal river. The house is oriented around a central courtyard that frames the sound of water while protecting against monsoon flooding through a raised stone plinth.",
     tags: ["Courtyard", "Water", "Monsoon", "Plinth"],
-    heroImage: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1600&q=85",
+    heroImage: "/projects_/RESIDENCE/WHITE WAVE/E1.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1600585154526-990dced4db0d?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1600573472591-ee6c563aaec9?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1600566753086-35f133c65dae?auto=format&fit=crop&w=1200&q=80"
+      "/projects_/RESIDENCE/WHITE WAVE/E1.jpg",
+      "/projects_/RESIDENCE/WHITE WAVE/E2.jpg",
+      "/projects_/RESIDENCE/WHITE WAVE/E3.jpg",
+      "/projects_/RESIDENCE/WHITE WAVE/E4.jpg",
+      "/projects_/RESIDENCE/WHITE WAVE/01.png",
+      "/projects_/RESIDENCE/WHITE WAVE/02.jpg"
     ]
   },
   {
@@ -95,10 +130,16 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Hill country villa",
     desc: "A small vacation home in the Palani Hills — built almost entirely from locally quarried granite and tactile timber. Organized around a single long axis towards the distant valley fog.",
     tags: ["Granite", "Hillside", "Timber", "Framed Views"],
-    heroImage: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1600&q=85",
+    heroImage: "/projects_/RESIDENCE/OXIDE/KRT3.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=80"
+      "/projects_/RESIDENCE/OXIDE/KRT3.jpg",
+      "/projects_/RESIDENCE/OXIDE/KRT5.jpg",
+      "/projects_/RESIDENCE/OXIDE/KRT7.jpg",
+      "/projects_/RESIDENCE/OXIDE/001krt.png",
+      "/projects_/RESIDENCE/OXIDE/002krt.png",
+      "/projects_/RESIDENCE/OXIDE/003krt.png",
+      "/projects_/RESIDENCE/OXIDE/01.jpg",
+      "/projects_/RESIDENCE/OXIDE/002.png"
     ]
   },
   {
@@ -113,29 +154,35 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Exhibition spaces & workshops",
     desc: "A public architectural complex designed for regional artisans. Heavy masonry masses are pierced by high vaulted light-wells that cast dramatic sun shadows throughout the day.",
     tags: ["Masonry", "Cultural", "Lightwells", "Exhibition"],
-    heroImage: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1600&q=85",
+    heroImage: "/projects_/commercial/THE WEAVERS/1.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=1200&q=80"
+      "/projects_/commercial/THE WEAVERS/1.jpg",
+      "/projects_/commercial/THE WEAVERS/2.jpg",
+      "/projects_/commercial/THE WEAVERS/3.jpg",
+      "/projects_/commercial/THE WEAVERS/4.jpg",
+      "/projects_/commercial/THE WEAVERS/5.jpg",
+      "/projects_/commercial/THE WEAVERS/6.jpg",
+      "/projects_/commercial/THE WEAVERS/7.jpg",
+      "/projects_/commercial/THE WEAVERS/8.jpg"
     ]
   },
   {
     num: "NS — 005",
-    name: "Basalt Guild Headquarters",
-    category: "Commercial",
-    type: "Commercial",
+    name: "The Frame Sanctuary",
+    category: "Residences",
+    type: "Residential",
     year: "2023",
     location: "Chennai, Tamil Nadu",
     status: "built",
-    area: "980 sqm",
-    program: "Corporate offices & design studios",
-    desc: "A modern commercial workspace built with exposed cast concrete and louvred dark basalt panels, optimizing natural cross-ventilation in tropical urban heat.",
-    tags: ["Office", "Basalt", "Concrete", "Cross-ventilation"],
-    heroImage: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1600&q=85",
+    area: "380 sqm",
+    program: "Urban residence & courtyards",
+    desc: "A modern residence built with exposed cast concrete and louvred timber panels, optimizing natural cross-ventilation in tropical urban heat.",
+    tags: ["Residence", "Frame", "Concrete", "Cross-ventilation"],
+    heroImage: "/projects_/RESIDENCE/THE FRAME/14.png",
     gallery: [
-      "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1200&q=80"
+      "/projects_/RESIDENCE/THE FRAME/14.png",
+      "/projects_/RESIDENCE/THE FRAME/15.png",
+      "/projects_/RESIDENCE/THE FRAME/16.png"
     ]
   },
   {
@@ -150,29 +197,33 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Residential interior transformation",
     desc: "A tactile interior landscape utilizing hand-troweled warm micro-cement, dark walnut joinery, and concealed ambient light troughs to create a seamless sanctuary above the city.",
     tags: ["Interior", "Micro-Cement", "Walnut", "Tactile"],
-    heroImage: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1600&q=85",
+    heroImage: "/projects_/INTERIOR/BLOCK RESIDENCE/signal-2025-10-30-14-21-39-668_002.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1618219908412-a29a1bb7b86e?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1200&q=80"
+      "/projects_/INTERIOR/BLOCK RESIDENCE/signal-2025-10-30-14-21-39-668_002.jpg",
+      "/projects_/INTERIOR/BLOCK RESIDENCE/signal-2025-10-30-14-22-02-497_002.jpg",
+      "/projects_/INTERIOR/BLOCK RESIDENCE/signal-2025-10-30-14-23-07-996_002.jpg",
+      "/projects_/INTERIOR/BLOCK RESIDENCE/signal-2025-10-30-14-23-49-317_002.jpg",
+      "/projects_/INTERIOR/BLOCK RESIDENCE/signal-2026-05-30-012737_002.jpeg",
+      "/projects_/INTERIOR/BLOCK RESIDENCE/ChatGPT Image May 30, 2026, 01_49_55 AM.png"
     ]
   },
   {
     num: "NS — 007",
-    name: "Architectural Teak Atelier",
-    category: "Interior",
-    type: "Interior",
+    name: "Architectural Teak Residence",
+    category: "Residences",
+    type: "Residential",
     year: "2023",
     location: "Kochi, Kerala",
     status: "built",
-    area: "220 sqm",
-    program: "Studio & gallery interior",
-    desc: "Crafted entirely using reclaimed Malabar teak and raw brass accents. The space functions as both an architectural studio and an intimate private gallery.",
-    tags: ["Teak", "Interior", "Reclaimed", "Studio"],
-    heroImage: "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1600&q=85",
+    area: "320 sqm",
+    program: "Single family residence",
+    desc: "A contemporary elevated residence crafted with exposed red clay brick massing, Malabar teak wood joinery, and expansive open balconies facing tropical foliage.",
+    tags: ["Residence", "Teak", "Brickwork", "Elevation"],
+    heroImage: "/projects_/RESIDENCE/Untitled folder/6.png",
     gallery: [
-      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1600566752355-35792bedcfea?auto=format&fit=crop&w=1200&q=80"
+      "/projects_/RESIDENCE/Untitled folder/6.png",
+      "/projects_/RESIDENCE/Untitled folder/7.png",
+      "/projects_/RESIDENCE/Untitled folder/8.png"
     ]
   },
   {
@@ -187,10 +238,12 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Speculative research pavilion",
     desc: "An unbuilt conceptual pavilion exploring traditional Dravidian brick firing technique transformed into a structural shell. The structure forms a microclimate canopy.",
     tags: ["Unbuilt", "Terra Cotta", "Speculative", "Shell Structure"],
-    heroImage: "https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?auto=format&fit=crop&w=1600&q=85",
+    heroImage: "/projects_/UNBUILT/THE CONTRAST/a1.png",
     gallery: [
-      "https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80"
+      "/projects_/UNBUILT/THE CONTRAST/a1.png",
+      "/projects_/UNBUILT/THE CONTRAST/a2.png",
+      "/projects_/UNBUILT/THE CONTRAST/a3.png",
+      "/projects_/UNBUILT/THE CONTRAST/a4.png"
     ]
   },
   {
@@ -205,10 +258,13 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Eco-tourism sanctuary conceptual competition",
     desc: "A cantilevered lattice timber canopy designed to hover above a rain catchment basin, creating an off-grid sanctuary powered by passive air draft and rainwater harvesting.",
     tags: ["Unbuilt", "Timber Lattice", "Rain Catchment", "Eco"],
-    heroImage: "https://images.unsplash.com/photo-1513584684374-8bab748fbf90?auto=format&fit=crop&w=1600&q=85",
+    heroImage: "/projects_/UNBUILT/THE TILT/4.png",
     gallery: [
-      "https://images.unsplash.com/photo-1513584684374-8bab748fbf90?auto=format&fit=crop&w=1200&q=80",
-      "https://images.unsplash.com/photo-1524758631624-e2822e304c36?auto=format&fit=crop&w=1200&q=80"
+      "/projects_/UNBUILT/THE TILT/4.png",
+      "/projects_/UNBUILT/THE TILT/6.png",
+      "/projects_/UNBUILT/THE TILT/16.png",
+      "/projects_/UNBUILT/THE TILT/18.png",
+      "/projects_/UNBUILT/THE TILT/Enscape_2025-08-15-20-26-10.jpg"
     ]
   }
 ];

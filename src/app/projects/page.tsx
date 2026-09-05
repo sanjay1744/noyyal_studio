@@ -9,20 +9,26 @@ import {
   ProjectCategory 
 } from "@/config/sanity";
 import Footer from "@/components/ui/Footer";
+import CinematicScrollModal from "@/components/ui/CinematicScrollModal";
+import DrawerCinematicViewport from "@/components/ui/DrawerCinematicViewport";
+import dynamic from "next/dynamic";
 import { clsx } from "clsx";
 import { 
   Grid, 
-  List, 
   X, 
   ChevronLeft, 
   ChevronRight, 
   MapPin, 
   Calendar, 
   Maximize2, 
+  Minimize2,
   Layers, 
   Tag, 
   ArrowUpRight,
-  Search
+  Search,
+  Box,
+  MoveDown,
+  Sparkles
 } from "lucide-react";
 
 type CategoryFilter = "All" | ProjectCategory;
@@ -35,21 +41,57 @@ const CATEGORIES: CategoryFilter[] = [
   "Unbuilt"
 ];
 
+const VirtualGalleryHall = dynamic(
+  () => import("@/components/three/VirtualGalleryHall"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[650px] flex flex-col items-center justify-center bg-neutral-950 text-white font-mono text-xs tracking-widest uppercase rounded-2xl">
+        <div className="w-10 h-10 border-2 border-white/20 border-t-amber-400 rounded-full animate-spin mb-4" />
+        <span>Loading 3D Exhibition Hall...</span>
+      </div>
+    ),
+  }
+);
+
 function ProjectsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [activeCategory, setActiveCategory] = useState<CategoryFilter>("All");
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>("Residences");
   const [activeYear, setActiveYear] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"3d" | "grid">("3d");
 
   // Selected project drawer state
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number>(-1);
   const [activeGalleryIdx, setActiveGalleryIdx] = useState<number>(0);
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [cinematicProject, setCinematicProject] = useState<Project | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  const toggleFullscreen = useCallback(() => {
+    if (typeof document === "undefined") return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
   // Fetch Projects Data
   useEffect(() => {
@@ -62,7 +104,13 @@ function ProjectsContent() {
         const foundCategory = CATEGORIES.find(
           (c) => c.toLowerCase() === catParam.toLowerCase()
         );
-        if (foundCategory) setActiveCategory(foundCategory);
+        if (foundCategory) {
+          if (viewMode === "3d" && foundCategory === "All") {
+            setActiveCategory("Residences");
+          } else {
+            setActiveCategory(foundCategory);
+          }
+        }
       }
 
       // Handle project open from query param
@@ -74,10 +122,28 @@ function ProjectsContent() {
           setSelectedIdx(idx);
           setActiveGalleryIdx(0);
           setIsOpen(true);
+          if (data[idx].cinematicFrames && data[idx].cinematicFrames!.length > 0) {
+            setCinematicProject(data[idx]);
+          }
         }
       }
     });
-  }, [searchParams]);
+  }, [searchParams, viewMode]);
+
+  // Guard: in 3D mode, automatically fallback from 'All' to 'Residences'
+  useEffect(() => {
+    if (viewMode === "3d" && activeCategory === "All") {
+      setActiveCategory("Residences");
+    }
+  }, [viewMode, activeCategory]);
+
+  // Categories to display: "All" is only shown in Grid mode, hidden in 3D mode
+  const displayedCategories = useMemo(() => {
+    if (viewMode === "3d") {
+      return CATEGORIES.filter((cat) => cat !== "All");
+    }
+    return CATEGORIES;
+  }, [viewMode]);
 
   // Compute category counts
   const categoryCounts = useMemo(() => {
@@ -122,12 +188,17 @@ function ProjectsContent() {
     });
   }, [allProjects, activeCategory, activeYear, searchQuery]);
 
-  // Open detail panel
+  // Open detail panel or cinematic viewer
   const handleOpenProject = (proj: Project, idx: number) => {
     setSelectedProject(proj);
     setSelectedIdx(idx);
     setActiveGalleryIdx(0);
     setIsOpen(true);
+
+    if (proj.cinematicVideo || (proj.cinematicFrames && proj.cinematicFrames.length > 0)) {
+      setCinematicProject(proj);
+    }
+
     router.push(`/projects?open=${idx}${activeCategory !== "All" ? `&category=${activeCategory.toLowerCase()}` : ""}`, { scroll: false });
   };
 
@@ -190,7 +261,7 @@ function ProjectsContent() {
       <header className="sticky top-14 z-30 w-full bg-[#f4f3ef]/90 backdrop-blur-md border-b border-[#e5e3dc] px-4 md:px-8 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3 transition-all select-none">
         {/* Compact Category Filter Bar */}
         <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto scrollbar-none py-0.5">
-          {CATEGORIES.map((cat) => {
+          {displayedCategories.map((cat) => {
             const isActive = activeCategory === cat;
             const count = categoryCounts[cat] || 0;
 
@@ -224,82 +295,129 @@ function ProjectsContent() {
           })}
         </div>
 
-        {/* Right Tools: Year Filter, Search & View Switcher */}
+        {/* Right Tools: Year Filter, Search (Grid/List only) & View Switcher */}
         <div className="flex items-center gap-2.5 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-[#e5e3dc] pt-2 md:pt-0">
-          {/* Year Filter dropdown */}
-          <div className="flex items-center gap-1.5">
-            <select
-              value={activeYear}
-              onChange={(e) => setActiveYear(e.target.value)}
-              className="bg-[#f0eee8] text-[9.5px] tracking-widest uppercase border border-[#dcdcd4] rounded-full px-3 py-1 text-black font-mono outline-none focus:border-black cursor-pointer"
-            >
-              {availableYears.map((yr) => (
-                <option key={yr} value={yr}>
-                  {yr === "All" ? "All Years" : yr}
-                </option>
-              ))}
-            </select>
-          </div>
+          {viewMode !== "3d" && (
+            <>
+              {/* Year Filter dropdown */}
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={activeYear}
+                  onChange={(e) => setActiveYear(e.target.value)}
+                  className="bg-[#f0eee8] text-[9.5px] tracking-widest uppercase border border-[#dcdcd4] rounded-full px-3 py-1 text-black font-mono outline-none focus:border-black cursor-pointer"
+                >
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={yr}>
+                      {yr === "All" ? "All Years" : yr}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Search Box */}
-          <div className="relative flex items-center">
-            <Search className="w-3 h-3 absolute left-2.5 text-[#888] pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-[#f0eee8] text-[10px] tracking-wide placeholder-[#999] border border-[#dcdcd4] rounded-full pl-7 pr-3 py-1 w-28 sm:w-36 outline-none focus:border-black transition-all focus:w-44"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery("")} 
-                className="absolute right-2 text-[#888] hover:text-black cursor-pointer"
+              {/* Search Box */}
+              <div className="relative flex items-center">
+                <Search className="w-3 h-3 absolute left-2.5 text-[#888] pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-[#f0eee8] text-[10px] tracking-wide placeholder-[#999] border border-[#dcdcd4] rounded-full pl-7 pr-3 py-1 w-28 sm:w-36 outline-none focus:border-black transition-all focus:w-44"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery("")} 
+                    className="absolute right-2 text-[#888] hover:text-black cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* View Mode Switcher: 3D Hall & Grid */}
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center bg-[#eceae3] p-0.5 rounded-full border border-[#dcdcd4]">
+              <button
+                onClick={() => {
+                  setViewMode("3d");
+                  if (activeCategory === "All") {
+                    setActiveCategory("Residences");
+                  }
+                }}
+                className={clsx(
+                  "p-1.5 rounded-full transition-all cursor-pointer",
+                  viewMode === "3d" ? "bg-white text-black shadow-xs" : "text-[#777] hover:text-black"
+                )}
+                title="3D Exhibition Hall"
               >
-                <X className="w-3 h-3" />
+                <Box className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode("grid")}
+                className={clsx(
+                  "p-1.5 rounded-full transition-all cursor-pointer",
+                  viewMode === "grid" ? "bg-white text-black shadow-xs" : "text-[#777] hover:text-black"
+                )}
+                title="Grid View"
+              >
+                <Grid className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {viewMode === "3d" && (
+              <button
+                onClick={toggleFullscreen}
+                className="p-1.5 rounded-full bg-[#eceae3] hover:bg-black hover:text-white transition-all text-[#555] border border-[#dcdcd4] cursor-pointer"
+                title={isFullscreen ? "Exit Fullscreen (Esc)" : "Full Screen Browser View"}
+              >
+                {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 text-black" /> : <Maximize2 className="w-3.5 h-3.5" />}
               </button>
             )}
-          </div>
-
-          {/* Grid / List Mode Switcher */}
-          <div className="flex items-center bg-[#eceae3] p-0.5 rounded-full border border-[#dcdcd4]">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={clsx(
-                "p-1 rounded-full transition-all cursor-pointer",
-                viewMode === "grid" ? "bg-white text-black shadow-xs" : "text-[#777] hover:text-black"
-              )}
-              title="Grid View"
-            >
-              <Grid className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={clsx(
-                "p-1 rounded-full transition-all cursor-pointer",
-                viewMode === "list" ? "bg-white text-black shadow-xs" : "text-[#777] hover:text-black"
-              )}
-              title="Architectural List View"
-            >
-              <List className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
       </header>
 
       {/* ── MAIN CONTENT AREA ── */}
-      <main className="flex-grow px-4 md:px-10 py-6 max-w-[1700px] w-full mx-auto">
-        {/* Results Metadata summary */}
-        <div className="flex items-center justify-between mb-5 border-b border-[#e5e3dc] pb-2.5 select-none">
-          <div className="text-[9.5px] tracking-[0.25em] text-[#777] uppercase font-mono">
-            Showing <span className="text-black font-bold">{filteredProjects.length}</span> {activeCategory === "All" ? "Total Projects" : `${activeCategory} Projects`}
-          </div>
-          {searchQuery && (
-            <div className="text-[9.5px] text-[#777]">
-              Filtering for &ldquo;<span className="text-black italic">{searchQuery}</span>&rdquo;
+      <main
+        className={clsx(
+          "flex-grow w-full transition-all duration-300",
+          viewMode === "3d"
+            ? "p-0 m-0 max-w-none h-[calc(100vh-104px)] overflow-hidden"
+            : "px-4 md:px-10 py-6 max-w-[1700px] mx-auto"
+        )}
+      >
+        {/* Results Metadata summary (Hidden in 3D Mode) */}
+        {viewMode !== "3d" && (
+          <div className="flex items-center justify-between mb-5 border-b border-[#e5e3dc] pb-2.5 select-none">
+            <div className="text-[9.5px] tracking-[0.25em] text-[#777] uppercase font-mono">
+              Showing <span className="text-black font-bold">{filteredProjects.length}</span> {activeCategory === "All" ? "Total Projects" : `${activeCategory} Projects`}
             </div>
-          )}
-        </div>
+            {searchQuery && (
+              <div className="text-[9.5px] text-[#777]">
+                Filtering for &ldquo;<span className="text-black italic">{searchQuery}</span>&rdquo;
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── VIEW MODE: 3D EXHIBITION HALL (FULL SCREEN EDGE-TO-EDGE) ── */}
+        {viewMode === "3d" && (
+          <div className="w-full h-full">
+            <VirtualGalleryHall
+              allProjects={allProjects}
+              selectedCategory={activeCategory === "All" ? "Residences" : activeCategory}
+              onSelectCategory={(cat) => handleCategorySelect(cat)}
+              onBackToGrid={() => setViewMode("grid")}
+              onOpenProjectDrawer={(proj) => {
+                const idx = allProjects.indexOf(proj);
+                handleOpenProject(proj, idx);
+              }}
+              hideTopHud={true}
+            />
+          </div>
+        )}
 
         {/* ── VIEW MODE: GRID ── */}
         {viewMode === "grid" && (
@@ -341,22 +459,6 @@ function ProjectsContent() {
                         
                         {/* Gradient Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 opacity-40 group-hover:opacity-60 transition-opacity duration-300" />
-
-                        {/* Top Badges */}
-                        <div className="absolute top-3 right-3 flex items-center justify-end pointer-events-none">
-                          <span 
-                            className={clsx(
-                              "text-[8px] font-mono tracking-widest uppercase px-2.5 py-1 rounded-sm border backdrop-blur-md font-semibold",
-                              p.status === "built" 
-                                ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/30" 
-                                : p.status === "unbuilt"
-                                ? "bg-amber-950/80 text-amber-300 border-amber-500/30"
-                                : "bg-black/80 text-gray-200 border-white/20"
-                            )}
-                          >
-                            {p.status}
-                          </span>
-                        </div>
 
                         {/* Bottom Overlay Info on Hover */}
                         <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white pointer-events-none opacity-90 group-hover:opacity-100 transition-opacity">
@@ -436,103 +538,11 @@ function ProjectsContent() {
           </AnimatePresence>
         )}
 
-        {/* ── VIEW MODE: ARCHITECTURAL LIST ── */}
-        {viewMode === "list" && (
-          <AnimatePresence mode="wait">
-            {filteredProjects.length > 0 ? (
-              <motion.div
-                key={`list-${activeCategory}-${activeYear}-${searchQuery}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="border border-[#e5e3dc] bg-white rounded-sm overflow-hidden shadow-xs"
-              >
-                {/* Table Header */}
-                <div className="grid grid-cols-[60px_2.5fr_1fr_1.2fr_1fr_90px] px-6 py-3.5 bg-[#f6f5f0] border-b border-[#e5e3dc] text-[8.5px] tracking-[0.25em] text-[#777] uppercase font-mono font-semibold select-none">
-                  <span>#</span>
-                  <span>Project Title</span>
-                  <span>Category</span>
-                  <span>Location</span>
-                  <span>Year</span>
-                  <span className="text-center">Status</span>
-                </div>
-
-                {/* Table Rows */}
-                <div className="divide-y divide-[#f0eee8]">
-                  {filteredProjects.map((p, index) => {
-                    const originalIndex = allProjects.indexOf(p);
-                    return (
-                      <motion.div
-                        key={p.num}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.25, delay: index * 0.03 }}
-                        onClick={() => handleOpenProject(p, originalIndex)}
-                        className="grid grid-cols-[60px_2.5fr_1fr_1.2fr_1fr_90px] px-6 py-4 items-center hover:bg-[#f7f6f1] transition-colors duration-200 cursor-pointer group"
-                      >
-                        <span className="text-[10px] font-mono text-[#999] group-hover:text-black">
-                          {String(index + 1).padStart(2, "0")}
-                        </span>
-                        <div className="flex items-center gap-3">
-                          {/* Mini Thumbnail */}
-                          <div className="w-9 h-7 bg-[#eae8e1] rounded-xs overflow-hidden shrink-0 hidden sm:block">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={p.heroImage}
-                              alt={p.name}
-                              className="w-full h-full object-cover group-hover:scale-1.1 transition-transform duration-300"
-                            />
-                          </div>
-                          <div>
-                            <span className="font-syne text-[14.5px] font-bold text-black group-hover:underline underline-offset-4 decoration-1">
-                              {p.name}
-                            </span>
-                            <span className="text-[9.5px] text-[#888] block sm:hidden font-mono mt-0.5">
-                              {p.category} · {p.year}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[10px] tracking-wider text-[#666] font-mono uppercase">
-                          {p.category}
-                        </span>
-                        <span className="text-[10.5px] text-[#666] font-mono flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-[#aaa]" />
-                          {p.location.split(",")[0]}
-                        </span>
-                        <span className="text-[10.5px] text-[#666] font-mono">
-                          {p.year}
-                        </span>
-                        <span className="flex justify-center">
-                          <span
-                            className={clsx(
-                              "text-[8px] font-mono tracking-widest uppercase border px-2 py-0.5 min-w-[70px] text-center rounded-xs font-semibold",
-                              p.status === "built" 
-                                ? "border-emerald-600/40 text-emerald-800 bg-emerald-50/50" 
-                                : p.status === "unbuilt"
-                                ? "border-amber-600/40 text-amber-800 bg-amber-50/50"
-                                : "border-[#ccc] text-[#666]"
-                            )}
-                          >
-                            {p.status}
-                          </span>
-                        </span>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            ) : (
-              <div className="py-20 text-center border border-dashed border-[#dcdcd4] rounded-lg p-12 bg-white">
-                <p className="font-syne text-[15px] font-semibold text-black mb-1">
-                  No projects match your filter criteria
-                </p>
-              </div>
-            )}
-          </AnimatePresence>
-        )}
       </main>
 
-      <Footer leftText="© 2026 Noyyal Studios · Portfolio & Architectural Archive" />
+      {viewMode !== "3d" && (
+        <Footer leftText="© 2026 Noyyal Studios · Portfolio & Architectural Archive" />
+      )}
 
       {/* ── DETAIL SLIDE-OVER DRAWER & LIGHTBOX ── */}
       <AnimatePresence>
@@ -603,58 +613,67 @@ function ProjectsContent() {
 
               {/* Drawer Body Scroll Area */}
               <div className="flex-grow overflow-y-auto flex flex-col lg:flex-row">
-                {/* Left Side: Visual Media Gallery */}
+                {/* Left Side: Visual Media Gallery / Interactive 3D Video Viewport */}
                 <div className="w-full lg:w-[60%] border-r border-[#e5e3dc] p-6 lg:p-10 flex flex-col gap-6 bg-[#f0eee8]/50">
-                  {/* Hero Main Image with Fade Animation */}
-                  <div className="w-full aspect-[16/10] bg-black/5 rounded-sm overflow-hidden relative shadow-md group">
-                    <AnimatePresence mode="wait">
-                      <motion.img
-                        key={selectedProject.gallery[activeGalleryIdx] || selectedProject.heroImage}
-                        src={selectedProject.gallery[activeGalleryIdx] || selectedProject.heroImage}
-                        alt={selectedProject.name}
-                        initial={{ opacity: 0, scale: 1.02 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.35 }}
-                        className="w-full h-full object-cover"
-                      />
-                    </AnimatePresence>
-                    <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md text-white text-[9px] font-mono px-2.5 py-1 rounded-xs pointer-events-none">
-                      Photo {activeGalleryIdx + 1} of {selectedProject.gallery.length}
-                    </div>
-                  </div>
-
-                  {/* Thumbnail Selector Grid */}
-                  <div>
-                    <div className="text-[9px] tracking-[0.25em] text-[#888] uppercase font-mono mb-2.5 font-semibold">
-                      Architectural Views & Details
-                    </div>
-                    <div className="grid grid-cols-4 gap-3">
-                      {selectedProject.gallery.map((imgUrl, gIdx) => (
-                        <button
-                          key={gIdx}
-                          onClick={() => setActiveGalleryIdx(gIdx)}
-                          className={clsx(
-                            "aspect-[4/3] rounded-xs overflow-hidden border-2 transition-all relative cursor-pointer",
-                            activeGalleryIdx === gIdx
-                              ? "border-black scale-102 shadow-sm"
-                              : "border-transparent opacity-60 hover:opacity-100"
-                          )}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={imgUrl}
-                            alt={`${selectedProject.name} thumbnail ${gIdx + 1}`}
+                  {selectedProject.cinematicVideo ? (
+                    <DrawerCinematicViewport
+                      project={selectedProject}
+                      onOpenFullscreen={() => setCinematicProject(selectedProject)}
+                    />
+                  ) : (
+                    <>
+                      {/* Hero Main Image with Fade Animation */}
+                      <div className="w-full aspect-[16/10] bg-black/5 rounded-sm overflow-hidden relative shadow-md group">
+                        <AnimatePresence mode="wait">
+                          <motion.img
+                            key={selectedProject.gallery[activeGalleryIdx] || selectedProject.heroImage}
+                            src={selectedProject.gallery[activeGalleryIdx] || selectedProject.heroImage}
+                            alt={selectedProject.name}
+                            initial={{ opacity: 0, scale: 1.02 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.35 }}
                             className="w-full h-full object-cover"
                           />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                        </AnimatePresence>
+                        <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md text-white text-[9px] font-mono px-2.5 py-1 rounded-xs pointer-events-none">
+                          Photo {activeGalleryIdx + 1} of {selectedProject.gallery.length}
+                        </div>
+                      </div>
+
+                      {/* Thumbnail Selector Grid */}
+                      <div>
+                        <div className="text-[9px] tracking-[0.25em] text-[#888] uppercase font-mono mb-2.5 font-semibold">
+                          Architectural Views & Details
+                        </div>
+                        <div className="grid grid-cols-4 gap-3">
+                          {selectedProject.gallery.map((imgUrl, gIdx) => (
+                            <button
+                              key={gIdx}
+                              onClick={() => setActiveGalleryIdx(gIdx)}
+                              className={clsx(
+                                "aspect-[4/3] rounded-xs overflow-hidden border-2 transition-all relative cursor-pointer",
+                                activeGalleryIdx === gIdx
+                                  ? "border-black scale-102 shadow-sm"
+                                  : "border-transparent opacity-60 hover:opacity-100"
+                              )}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={imgUrl}
+                                alt={`${selectedProject.name} thumbnail ${gIdx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Right Side: Detailed Project Specs & Narrative */}
-                <div className="w-full lg:w-[40%] p-6 lg:p-10 flex flex-col justify-between bg-white">
+                <div className="w-full lg:w-[40%] p-6 lg:p-10 flex flex-col justify-between bg-white border-t lg:border-t-0 border-[#e5e3dc]">
                   <div className="space-y-8">
                     {/* Header */}
                     <div>
@@ -722,19 +741,45 @@ function ProjectsContent() {
                       <div className="text-[9px] tracking-[0.25em] text-[#888] uppercase font-mono mb-2 font-semibold">
                         Architectural Concept & Narrative
                       </div>
-                      <p className="font-playfair text-[15px] leading-relaxed text-[#333] border-l-2 border-black pl-4 py-1">
+                      <p className="font-playfair text-[15px] leading-relaxed text-[#333] border-l-2 border-black pl-4 py-1 m-0">
                         {selectedProject.desc}
                       </p>
                     </div>
-
-
                   </div>
 
-
+                  {/* Bottom Fill Section: Spatial Design Focus & Tags */}
+                  <div className="pt-6 mt-6 border-t border-[#e5e3dc] flex flex-col gap-3">
+                    <div className="text-[9px] tracking-[0.25em] text-[#888] uppercase font-mono font-semibold">
+                      Spatial Taxonomy & Focus
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProject.tags.map((t, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[9px] font-mono tracking-wider bg-[#f4f3ef] text-[#444] border border-[#e5e3dc] px-2.5 py-1 rounded-xs uppercase font-medium"
+                        >
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="text-[8.5px] font-mono text-[#999] tracking-widest uppercase mt-1">
+                      Noyyal Architectural Archive · Ref: {selectedProject.num}
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.aside>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* ── FULLSCREEN 3D CINEMATIC SCROLL ANIMATION MODAL ── */}
+      <AnimatePresence>
+        {cinematicProject && (
+          <CinematicScrollModal
+            project={cinematicProject}
+            onClose={() => setCinematicProject(null)}
+          />
         )}
       </AnimatePresence>
     </div>
