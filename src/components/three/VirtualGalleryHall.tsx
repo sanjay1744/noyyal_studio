@@ -660,7 +660,7 @@ export default function VirtualGalleryHall({
   const categoriesList: ProjectCategory[] = ["Residences", "Commercial", "Interior", "Unbuilt"];
 
   return (
-    <div className="relative w-full h-[calc(100vh-64px)] min-h-[650px] bg-neutral-950 text-white overflow-hidden select-none">
+    <div className="relative w-full h-full min-h-[600px] bg-neutral-950 text-white overflow-hidden select-none">
       {/* ── TOP NAVIGATION HUD ── */}
       {!hideTopHud && (
         <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
@@ -953,16 +953,6 @@ export default function VirtualGalleryHall({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ── FLOATING HELPER BADGE ── */}
-      {focusedFrameIdx === null && !isPopupOpen && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-xs text-gray-300 font-mono tracking-wider animate-bounce">
-            <Compass className="w-4 h-4 text-amber-400" />
-            <span>Click any 3D picture frame to zoom in & view artwork</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
