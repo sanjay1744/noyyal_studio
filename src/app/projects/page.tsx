@@ -354,6 +354,7 @@ function ProjectsContent() {
                 const idx = allProjects.indexOf(proj);
                 handleOpenProject(proj, idx);
               }}
+              hideTopHud={true}
             />
           </div>
         )}

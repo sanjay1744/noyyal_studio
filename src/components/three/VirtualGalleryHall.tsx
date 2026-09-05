@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import { useGLTF, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { gsap } from "gsap";
@@ -10,23 +10,32 @@ import {
   ChevronLeft, 
   ChevronRight, 
   X, 
-  Maximize2, 
   ArrowLeft, 
   Box,
   RotateCcw,
   Compass,
-  Clock
+  Clock,
+  ExternalLink
 } from "lucide-react";
 import { Project, ProjectCategory } from "@/config/sanity";
-import { createFrameTexture, createComingSoonTexture } from "./FrameTextureCanvas";
+import { createFrameTexture, createComingSoonTexture, getOrLoadImage } from "./FrameTextureCanvas";
 
 const MODEL_PATH = "/models/nft_3d_art_gallery_-_luciano_robur.glb";
 
-// 12 Picture Material Names in the GLB model
-const PICTURE_MATERIALS = [
-  "Picture01", "Picture02", "Picture03", "Picture04",
-  "Picture05", "Picture06", "Picture07", "Picture08",
-  "Picture09", "Picture10", "Picture11", "Picture12"
+// 12 Picture Material Names ordered starting with Front Wall (Left, Center, Right in 90° view), then Side Walls
+const VISIBLE_FRAME_MATERIALS_ORDER = [
+  "Picture04", // 0: Front Wall Left Frame
+  "Picture05", // 1: Front Wall Center Frame
+  "Picture06", // 2: Front Wall Right Frame
+  "Picture07", // 3: Left Wall Frame
+  "Picture03", // 4: Right Wall Frame
+  "Picture08", // 5: Secondary Left Wall
+  "Picture09", // 6: Secondary Left Wall
+  "Picture02", // 7: Secondary Right Wall
+  "Picture01", // 8: Secondary Right Wall
+  "Picture11", // 9: Rear Wall Center
+  "Picture10", // 10: Rear Wall Left
+  "Picture12"  // 11: Rear Wall Right
 ];
 
 interface FrameData {
@@ -35,7 +44,92 @@ interface FrameData {
   mesh: THREE.Mesh;
   worldPos: THREE.Vector3;
   surfaceNormal: THREE.Vector3;
+  quadGeom: THREE.BufferGeometry | null;
   project: Project | null;
+}
+
+function assignProjectsToFrames(sortedFrames: FrameData[], categoryProjects: Project[]): FrameData[] {
+  return sortedFrames.map((frame, idx) => ({
+    ...frame,
+    project: categoryProjects[idx] || null,
+  }));
+}
+
+function getMaterialWorldPositionAndNormal(mesh: THREE.Mesh, matName: string): { worldPos: THREE.Vector3; surfaceNormal: THREE.Vector3 } {
+  mesh.updateMatrixWorld(true);
+  const geom = mesh.geometry as THREE.BufferGeometry;
+  if (!geom || !geom.attributes.position) {
+    const pos = new THREE.Vector3();
+    mesh.getWorldPosition(pos);
+    return { worldPos: pos, surfaceNormal: new THREE.Vector3(0, 0, 1) };
+  }
+
+  const posAttr = geom.attributes.position;
+  const normAttr = geom.attributes.normal;
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  const matIndex = materials.findIndex((m) => m.name === matName);
+
+  if (matIndex !== -1 && geom.groups && geom.groups.length > 0) {
+    const group = geom.groups.find((g) => g.materialIndex === matIndex);
+    if (group) {
+      let sumX = 0, sumY = 0, sumZ = 0;
+      let normX = 0, normY = 0, normZ = 0;
+      let count = 0;
+
+      const index = geom.index;
+      const start = group.start;
+      const end = group.start + group.count;
+
+      if (index) {
+        for (let i = start; i < end; i++) {
+          const vertexIdx = index.getX(i);
+          sumX += posAttr.getX(vertexIdx);
+          sumY += posAttr.getY(vertexIdx);
+          sumZ += posAttr.getZ(vertexIdx);
+          if (normAttr) {
+            normX += normAttr.getX(vertexIdx);
+            normY += normAttr.getY(vertexIdx);
+            normZ += normAttr.getZ(vertexIdx);
+          }
+          count++;
+        }
+      } else {
+        for (let i = start; i < end; i++) {
+          sumX += posAttr.getX(i);
+          sumY += posAttr.getY(i);
+          sumZ += posAttr.getZ(i);
+          if (normAttr) {
+            normX += normAttr.getX(i);
+            normY += normAttr.getY(i);
+            normZ += normAttr.getZ(i);
+          }
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        const localCenter = new THREE.Vector3(sumX / count, sumY / count, sumZ / count);
+        const worldPos = mesh.localToWorld(localCenter);
+
+        let surfaceNormal = new THREE.Vector3(0, 0, 1);
+        if (normAttr && (normX !== 0 || normY !== 0 || normZ !== 0)) {
+          const localNormal = new THREE.Vector3(normX / count, normY / count, normZ / count).normalize();
+          const normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
+          surfaceNormal = localNormal.applyMatrix3(normalMatrix).normalize();
+        } else {
+          surfaceNormal = new THREE.Vector3(0, 0, 0).sub(worldPos);
+          surfaceNormal.y = 0;
+          surfaceNormal.normalize();
+        }
+
+        return { worldPos, surfaceNormal };
+      }
+    }
+  }
+
+  const fallbackPos = new THREE.Vector3();
+  mesh.getWorldPosition(fallbackPos);
+  return { worldPos: fallbackPos, surfaceNormal: new THREE.Vector3(0, 0, 1) };
 }
 
 // ── 3D SCENE CONTENT COMPONENT ──
@@ -43,16 +137,16 @@ function GallerySceneContent({
   categoryProjects,
   selectedCategory,
   focusedFrameIdx,
-  setFocusedFrameIdx,
+  onFrameClick,
+  onCameraArrived,
   frameImageIndices,
-  setFrameImageIndices,
 }: {
   categoryProjects: Project[];
   selectedCategory: ProjectCategory;
   focusedFrameIdx: number | null;
-  setFocusedFrameIdx: (idx: number | null) => void;
+  onFrameClick: (idx: number) => void;
+  onCameraArrived: (idx: number) => void;
   frameImageIndices: Record<number, number>;
-  setFrameImageIndices: React.Dispatch<React.SetStateAction<Record<number, number>>>;
 }) {
   const { scene } = useGLTF(MODEL_PATH);
   const { camera } = useThree();
@@ -77,56 +171,114 @@ function GallerySceneContent({
     return maxDim > 0 ? 16 / maxDim : 1;
   }, [scene]);
 
-  // Clone materials & gather frame meshes metadata (No Project Repetition!)
+  // Preload all project images for immediate rendering
+  useEffect(() => {
+    categoryProjects.forEach((proj) => {
+      if (proj.heroImage) getOrLoadImage(proj.heroImage, () => {});
+      if (proj.gallery) {
+        proj.gallery.forEach((imgUrl) => getOrLoadImage(imgUrl, () => {}));
+      }
+    });
+  }, [categoryProjects]);
+
+  // Gather frame meshes metadata and configure materials
   useEffect(() => {
     if (!scene) return;
 
-    const extractedFrames: FrameData[] = [];
+    const extractedMap = new Map<string, FrameData>();
     const matMap = new Map<string, THREE.MeshStandardMaterial>();
 
-    // Traversal to find picture meshes
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        const mat = mesh.material as THREE.Material;
-        
-        if (mat && PICTURE_MATERIALS.includes(mat.name)) {
-          // Clone material so each frame is completely independent
-          const clonedMat = (mat as THREE.MeshStandardMaterial).clone();
-          clonedMat.roughness = 0.15;
-          clonedMat.metalness = 0.05;
-          clonedMat.color = new THREE.Color("#ffffff");
-          mesh.material = clonedMat;
-          matMap.set(mat.name, clonedMat);
+        const rawMat = mesh.material;
+        const materialsList: THREE.Material[] = Array.isArray(rawMat) ? rawMat : rawMat ? [rawMat] : [];
 
-          const frameIdx = PICTURE_MATERIALS.indexOf(mat.name);
-          // Assign project ONLY if within project count (Do not repeat!)
-          const assignedProject = frameIdx < categoryProjects.length ? categoryProjects[frameIdx] : null;
+        materialsList.forEach((mat) => {
+          if (mat && VISIBLE_FRAME_MATERIALS_ORDER.includes(mat.name)) {
+            const clonedMat = new THREE.MeshStandardMaterial({
+              color: new THREE.Color("#ffffff"),
+              roughness: 0.2,
+              metalness: 0.0,
+              emissive: new THREE.Color("#000000"),
+              emissiveIntensity: 0.0,
+              emissiveMap: null,
+              map: null,
+              lightMap: null,
+              aoMap: null,
+              roughnessMap: null,
+              metalnessMap: null,
+              normalMap: null,
+              alphaMap: null,
+              transparent: false,
+              opacity: 1.0,
+            });
 
-          // Compute world position
-          mesh.updateMatrixWorld(true);
-          const worldPos = new THREE.Vector3();
-          mesh.getWorldPosition(worldPos);
+            if (Array.isArray(mesh.material)) {
+              const idx = mesh.material.indexOf(mat);
+              if (idx !== -1) mesh.material[idx] = clonedMat;
+            } else {
+              mesh.material = clonedMat;
+            }
 
-          // Normal vector facing inward toward room center (0, 0, 0)
-          const surfaceNormal = new THREE.Vector3(0, 0, 0).sub(worldPos);
-          surfaceNormal.y = 0;
-          surfaceNormal.normalize();
+            matMap.set(mat.name, clonedMat);
 
-          extractedFrames[frameIdx] = {
-            name: mesh.name,
-            matName: mat.name,
-            mesh,
-            worldPos,
-            surfaceNormal,
-            project: assignedProject
-          };
-        }
+            const { worldPos, surfaceNormal } = getMaterialWorldPositionAndNormal(mesh, mat.name);
+
+            // Extract exact frame quad geometry in local space for pixel-perfect raycasting on the frame surface
+            let quadGeom: THREE.BufferGeometry | null = null;
+            const geom = mesh.geometry as THREE.BufferGeometry;
+            if (geom && geom.attributes.position) {
+              const posAttr = geom.attributes.position;
+              const matIndex = materialsList.indexOf(mat);
+              const group = geom.groups.find((g) => g.materialIndex === matIndex);
+              const index = geom.index;
+              const start = group ? group.start : 0;
+              const count = group ? group.count : posAttr.count;
+
+              if (count >= 4) {
+                const posArray = new Float32Array(count * 3);
+                for (let i = 0; i < count; i++) {
+                  const vIdx = index ? index.getX(start + i) : (start + i);
+                  const v = new THREE.Vector3(posAttr.getX(vIdx), posAttr.getY(vIdx), posAttr.getZ(vIdx));
+                  v.applyMatrix4(mesh.matrixWorld);
+                  posArray[i * 3] = v.x;
+                  posArray[i * 3 + 1] = v.y;
+                  posArray[i * 3 + 2] = v.z;
+                }
+                quadGeom = new THREE.BufferGeometry();
+                quadGeom.setAttribute("position", new THREE.BufferAttribute(posArray, 3));
+                if (count === 4) {
+                  quadGeom.setIndex([0, 1, 2, 0, 2, 3]);
+                }
+                quadGeom.computeVertexNormals();
+              }
+            }
+
+            extractedMap.set(mat.name, {
+              name: mesh.name,
+              matName: mat.name,
+              mesh,
+              worldPos,
+              surfaceNormal,
+              quadGeom,
+              project: null,
+            });
+          }
+        });
       }
     });
 
     materialsMapRef.current = matMap;
-    setFramesData(extractedFrames.filter(Boolean));
+
+    const orderedFrames: FrameData[] = VISIBLE_FRAME_MATERIALS_ORDER
+      .map((matName) => extractedMap.get(matName))
+      .filter(Boolean) as FrameData[];
+
+    if (orderedFrames.length === 0) return;
+
+    const sortedFrames = assignProjectsToFrames(orderedFrames, categoryProjects);
+    setFramesData(sortedFrames);
   }, [scene, categoryProjects]);
 
   // Update frame textures: Projects for available slots, "COMING SOON" for empty slots
@@ -139,18 +291,16 @@ function GallerySceneContent({
 
       const isFocused = focusedFrameIdx === idx;
 
-      if (idx < categoryProjects.length) {
-        const project = categoryProjects[idx];
+      if (frame.project) {
         const currentImgIdx = frameImageIndices[idx] || 0;
         
-        const newTexture = createFrameTexture(project, currentImgIdx, () => {
+        const newTexture = createFrameTexture(frame.project, currentImgIdx, () => {
           mat.needsUpdate = true;
         }, isFocused);
 
         if (mat.map) mat.map.dispose();
         mat.map = newTexture;
       } else {
-        // Extra frame slots marked as COMING SOON
         const comingSoonTexture = createComingSoonTexture(selectedCategory, isFocused);
         if (mat.map) mat.map.dispose();
         mat.map = comingSoonTexture;
@@ -158,101 +308,94 @@ function GallerySceneContent({
 
       mat.needsUpdate = true;
     });
-  }, [framesData, categoryProjects, frameImageIndices, focusedFrameIdx, selectedCategory]);
+  }, [framesData, frameImageIndices, focusedFrameIdx, selectedCategory]);
 
   // Compute dynamic room center from frame positions
   const roomCenter = useMemo(() => {
     if (framesData.length === 0) return new THREE.Vector3(0, 0, 0);
     const sum = new THREE.Vector3(0, 0, 0);
-    framesData.forEach((f) => sum.add(f.worldPos));
+    framesData.forEach((f) => sum.add(f.worldPos.clone().multiplyScalar(targetScale)));
     return sum.divideScalar(framesData.length);
-  }, [framesData]);
+  }, [framesData, targetScale]);
 
-  // Smooth Camera GSAP Animation Engine
+  // Camera Zoom Animation: Fly close in front of clicked frame, or return to overview
   useEffect(() => {
     if (!controlsRef.current) return;
 
+    gsap.killTweensOf(camera.position);
+    gsap.killTweensOf(controlsRef.current.target);
+
     if (focusedFrameIdx !== null && framesData[focusedFrameIdx]) {
       const frame = framesData[focusedFrameIdx];
-      
-      // Compute inward normal facing room center
-      const normal = roomCenter.clone().sub(frame.worldPos);
-      normal.y = 0;
-      normal.normalize();
+      const framePos = frame.worldPos.clone().multiplyScalar(targetScale);
+      const normal = frame.surfaceNormal.clone();
 
-      // Stand 2.2 meters in front of frame inside room at eye level
-      const standDistance = 2.2;
-      const targetCamPos = frame.worldPos.clone().add(normal.multiplyScalar(standDistance));
-      targetCamPos.y = frame.worldPos.y; // Eye level with frame center
+      // Position camera directly in front of the frame at a great framing distance
+      const targetCamPos = framePos.clone().add(normal.clone().multiplyScalar(1.8));
 
-      // Animate camera position and target
       gsap.to(camera.position, {
         x: targetCamPos.x,
         y: targetCamPos.y,
         z: targetCamPos.z,
-        duration: 1.6,
-        ease: "power3.inOut"
+        duration: 1.0,
+        ease: "power2.inOut",
+        onUpdate: () => {
+          if (controlsRef.current) controlsRef.current.update();
+        },
+        onComplete: () => {
+          onCameraArrived(focusedFrameIdx);
+        }
       });
 
       gsap.to(controlsRef.current.target, {
-        x: frame.worldPos.x,
-        y: frame.worldPos.y,
-        z: frame.worldPos.z,
-        duration: 1.6,
-        ease: "power3.inOut"
+        x: framePos.x,
+        y: framePos.y,
+        z: framePos.z,
+        duration: 1.0,
+        ease: "power2.inOut",
+        onUpdate: () => {
+          if (controlsRef.current) controlsRef.current.update();
+        }
       });
     } else {
-      // Overview Mode: INSIDE the gallery hall facing picture frames
-      const overviewCamPos = new THREE.Vector3(roomCenter.x, roomCenter.y + 0.1, roomCenter.z + 1.2);
-      const overviewTarget = new THREE.Vector3(roomCenter.x, roomCenter.y + 0.1, roomCenter.z - 0.6);
+      // Return smoothly to hall overview (rotated 90 degrees to the left)
+      const overviewCamPos = new THREE.Vector3(roomCenter.x + 2.2, roomCenter.y - 0.2, roomCenter.z);
+      const overviewTarget = new THREE.Vector3(roomCenter.x - 1.0, roomCenter.y - 0.2, roomCenter.z);
 
       gsap.to(camera.position, {
         x: overviewCamPos.x,
         y: overviewCamPos.y,
         z: overviewCamPos.z,
-        duration: 1.5,
-        ease: "power2.out"
+        duration: 0.9,
+        ease: "power2.out",
+        onUpdate: () => {
+          if (controlsRef.current) controlsRef.current.update();
+        }
       });
 
       gsap.to(controlsRef.current.target, {
         x: overviewTarget.x,
         y: overviewTarget.y,
         z: overviewTarget.z,
-        duration: 1.5,
-        ease: "power2.out"
+        duration: 0.9,
+        ease: "power2.out",
+        onUpdate: () => {
+          if (controlsRef.current) controlsRef.current.update();
+        }
       });
     }
-  }, [focusedFrameIdx, framesData, roomCenter, camera]);
-
-  // Category switch entrance sweep inside hall
-  useEffect(() => {
-    if (!controlsRef.current) return;
-    if (focusedFrameIdx !== null) return;
-
-    gsap.fromTo(
-      camera.position,
-      { x: roomCenter.x - 1.2, y: roomCenter.y + 0.2, z: roomCenter.z + 0.8 },
-      { x: roomCenter.x, y: roomCenter.y + 0.1, z: roomCenter.z + 1.2, duration: 1.8, ease: "power2.out" }
-    );
-  }, [selectedCategory, roomCenter]);
-
-  // Slow subtle rotation when in hall overview mode
-  useFrame((_, delta) => {
-    if (controlsRef.current && focusedFrameIdx === null) {
-      controlsRef.current.azimuthAngle += delta * 0.025;
-      controlsRef.current.update();
-    }
-  });
+  }, [focusedFrameIdx, framesData, roomCenter, targetScale, camera, onCameraArrived]);
 
   return (
     <>
       <OrbitControls
         ref={controlsRef}
+        target={[-1.0, 0.5, 0]}
         enableDamping
         dampingFactor={0.05}
         maxPolarAngle={Math.PI / 2 + 0.05}
-        minDistance={0.5}
-        maxDistance={4.0}
+        minDistance={0.1}
+        maxDistance={6.0}
       />
 
       <group ref={groupRef} scale={targetScale}>
@@ -261,28 +404,39 @@ function GallerySceneContent({
         {/* Ambient Warm Interior Gallery Point Light */}
         <pointLight position={[roomCenter.x, roomCenter.y + 1.8, roomCenter.z]} intensity={3.8} color="#fffaf0" />
 
-        {/* Clickable Hitbox Planes over picture frames */}
+        {/* Pixel-Perfect Clickable Hitboxes directly using each frame's exact surface quad geometry */}
         {framesData.map((frame, idx) => {
+          if (!frame.quadGeom) return null;
           return (
-            <group key={frame.matName} position={frame.worldPos}>
-              {/* Invisible Click Receiver Plane over frame surface */}
-              <mesh
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFocusedFrameIdx(idx);
-                }}
-                onPointerOver={(e) => {
-                  e.stopPropagation();
-                  document.body.style.cursor = "pointer";
-                }}
-                onPointerOut={() => {
-                  document.body.style.cursor = "auto";
-                }}
-              >
-                <planeGeometry args={[1.8, 1.8]} />
-                <meshBasicMaterial visible={false} />
-              </mesh>
-            </group>
+            <mesh
+              key={frame.matName}
+              geometry={frame.quadGeom}
+              onClick={(e) => {
+                e.stopPropagation();
+                onFrameClick(idx);
+              }}
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(
+                    new CustomEvent("custom-cursor-hover", {
+                      detail: { hovering: true, label: frame.project ? "CLICK TO VIEW" : "COMING SOON" }
+                    })
+                  );
+                }
+              }}
+              onPointerOut={() => {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(
+                    new CustomEvent("custom-cursor-hover", {
+                      detail: { hovering: false }
+                    })
+                  );
+                }
+              }}
+            >
+              <meshBasicMaterial visible={false} side={THREE.DoubleSide} />
+            </mesh>
           );
         })}
       </group>
@@ -296,15 +450,18 @@ export default function VirtualGalleryHall({
   selectedCategory,
   onSelectCategory,
   onBackToGrid,
-  onOpenProjectDrawer
+  onOpenProjectDrawer,
+  hideTopHud = false,
 }: {
   allProjects: Project[];
   selectedCategory: ProjectCategory;
   onSelectCategory: (cat: ProjectCategory) => void;
   onBackToGrid?: () => void;
   onOpenProjectDrawer?: (project: Project) => void;
+  hideTopHud?: boolean;
 }) {
   const [focusedFrameIdx, setFocusedFrameIdx] = useState<number | null>(null);
+  const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
   const [frameImageIndices, setFrameImageIndices] = useState<Record<number, number>>({});
 
   // Filter projects exclusively for the chosen category
@@ -312,14 +469,31 @@ export default function VirtualGalleryHall({
     return allProjects.filter((p) => p.category === selectedCategory);
   }, [allProjects, selectedCategory]);
 
-  // Is focused frame an active project or a "Coming Soon" frame?
-  const isComingSoonFocused = focusedFrameIdx !== null && focusedFrameIdx >= categoryProjects.length;
+  // Handle frame click: start camera zoom, ensure popup stays closed until arrival
+  const handleFrameClick = useCallback((idx: number) => {
+    setIsPopupOpen(false);
+    setFocusedFrameIdx(idx);
+  }, []);
 
-  // Active focused project metadata
+  // Handle camera arrival: smoothly open popup once camera reaches the frame
+  const handleCameraArrived = useCallback((_idx: number) => {
+    setIsPopupOpen(true);
+  }, []);
+
+  // Handle closing popup and returning camera to overview
+  const handleClose = useCallback(() => {
+    setIsPopupOpen(false);
+    setFocusedFrameIdx(null);
+  }, []);
+
+  // Active focused project metadata (1-to-1 matching the clicked frame slot)
   const activeProject = useMemo(() => {
-    if (focusedFrameIdx === null || isComingSoonFocused || categoryProjects.length === 0) return null;
-    return categoryProjects[focusedFrameIdx];
-  }, [focusedFrameIdx, isComingSoonFocused, categoryProjects]);
+    if (focusedFrameIdx === null || categoryProjects.length === 0) return null;
+    return categoryProjects[focusedFrameIdx] || null;
+  }, [focusedFrameIdx, categoryProjects]);
+
+  // Is focused frame a "Coming Soon" frame?
+  const isComingSoonFocused = focusedFrameIdx !== null && !activeProject;
 
   // Gallery image list for active project
   const activeGalleryImages = useMemo(() => {
@@ -349,18 +523,26 @@ export default function VirtualGalleryHall({
           return { ...prev, [focusedFrameIdx]: nextVal };
         });
       } else if (e.key === "Escape") {
-        setFocusedFrameIdx(null);
+        handleClose();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focusedFrameIdx, activeProject, activeGalleryImages]);
+  }, [focusedFrameIdx, activeProject, activeGalleryImages, handleClose]);
 
-  // Reset frame focus when changing category
-  const handleCategoryChange = (cat: ProjectCategory) => {
+  // Reset frame focus & image indices when changing category
+  useEffect(() => {
+    setIsPopupOpen(false);
     setFocusedFrameIdx(null);
-    onSelectCategory(cat);
+    setFrameImageIndices({});
+  }, [selectedCategory]);
+
+  const handleCategoryChange = (cat: ProjectCategory) => {
+    setIsPopupOpen(false);
+    setFocusedFrameIdx(null);
+    setFrameImageIndices({});
+    if (onSelectCategory) onSelectCategory(cat);
   };
 
   const categoriesList: ProjectCategory[] = ["Residences", "Commercial", "Interior", "Unbuilt"];
@@ -368,72 +550,83 @@ export default function VirtualGalleryHall({
   return (
     <div className="relative w-full h-[calc(100vh-64px)] min-h-[650px] bg-neutral-950 text-white overflow-hidden select-none">
       {/* ── TOP NAVIGATION HUD ── */}
-      <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
-        {/* Left: Hall Title & Back Button */}
-        <div className="flex items-center gap-4">
-          {onBackToGrid && (
-            <button
-              onClick={onBackToGrid}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white hover:text-black text-xs font-medium transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Grid</span>
-            </button>
-          )}
+      {!hideTopHud && (
+        <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
+          {/* Left: Hall Title & Back Button */}
+          <div className="flex items-center gap-4">
+            {onBackToGrid && (
+              <button
+                onClick={onBackToGrid}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white hover:text-black text-xs font-medium transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Grid</span>
+              </button>
+            )}
 
-          <div className="flex items-center gap-2.5">
-            <Box className="w-5 h-5 text-amber-400" />
-            <div>
-              <span className="text-[10px] uppercase font-mono tracking-widest text-gray-400 block">
-                3D EXHIBITION HALL
-              </span>
-              <h2 className="text-sm font-semibold tracking-wide uppercase">
-                {selectedCategory} Gallery ({categoryProjects.length} Projects)
-              </h2>
+            <div className="flex items-center gap-2.5">
+              <Box className="w-5 h-5 text-amber-400" />
+              <div>
+                <span className="text-[10px] uppercase font-mono tracking-widest text-gray-400 block">
+                  3D EXHIBITION HALL
+                </span>
+                <h2 className="text-sm font-semibold tracking-wide uppercase">
+                  {selectedCategory} Gallery ({categoryProjects.length} Projects)
+                </h2>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Center: Category Selector Pills */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10 overflow-x-auto">
-          {categoriesList.map((cat) => {
-            const isSelected = selectedCategory === cat;
-            const count = allProjects.filter((p) => p.category === cat).length;
+          {/* Center: Category Selector Pills */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10 overflow-x-auto">
+            {categoriesList.map((cat) => {
+              const isSelected = selectedCategory === cat;
+              const count = allProjects.filter((p) => p.category === cat).length;
 
-            return (
+              return (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryChange(cat)}
+                  className={`px-4 py-2 rounded-lg text-xs font-mono tracking-wider transition-all duration-300 cursor-pointer ${
+                    isSelected
+                      ? "bg-white text-black font-bold shadow-lg scale-105"
+                      : "text-gray-400 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {cat.toUpperCase()} ({count})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right: Hall View Reset Button */}
+          <div className="flex items-center gap-2">
+            {focusedFrameIdx !== null && (
               <button
-                key={cat}
-                onClick={() => handleCategoryChange(cat)}
-                className={`px-4 py-2 rounded-lg text-xs font-mono tracking-wider transition-all duration-300 cursor-pointer ${
-                  isSelected
-                    ? "bg-white text-black font-bold shadow-lg scale-105"
-                    : "text-gray-400 hover:text-white hover:bg-white/10"
-                }`}
+                onClick={handleClose}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-black border border-amber-500/40 text-xs font-mono transition-all cursor-pointer"
               >
-                {cat.toUpperCase()} ({count})
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Hall View</span>
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
-
-        {/* Right: Hall View Reset Button */}
-        <div className="flex items-center gap-2">
-          {focusedFrameIdx !== null && (
-            <button
-              onClick={() => setFocusedFrameIdx(null)}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-black border border-amber-500/40 text-xs font-mono transition-all cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Hall View</span>
-            </button>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* ── 3D CANVAS VIEWPORT ── */}
       <Canvas
-        camera={{ position: [0, 1.6, 2.5], fov: 50 }}
-        className="w-full h-full cursor-grab active:cursor-grabbing"
+        camera={{ position: [2.2, 1.4, 0], fov: 50 }}
+        className="w-full h-full cursor-none"
+        onPointerMissed={() => {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("custom-cursor-hover", {
+                detail: { hovering: false }
+              })
+            );
+          }
+        }}
       >
         <ambientLight intensity={1.5} />
         <directionalLight position={[10, 15, 10]} intensity={2.0} />
@@ -443,150 +636,218 @@ export default function VirtualGalleryHall({
           categoryProjects={categoryProjects}
           selectedCategory={selectedCategory}
           focusedFrameIdx={focusedFrameIdx}
-          setFocusedFrameIdx={setFocusedFrameIdx}
+          onFrameClick={handleFrameClick}
+          onCameraArrived={handleCameraArrived}
           frameImageIndices={frameImageIndices}
-          setFrameImageIndices={setFrameImageIndices}
         />
       </Canvas>
 
-      {/* ── BOTTOM HUD: FOCUSED PROJECT SINGLE-FRAME SLIDER & DETAILS ── */}
+      {/* ── FULLSCREEN PROJECT IMAGE POPUP OVERLAY ── */}
       <AnimatePresence>
-        {activeProject && focusedFrameIdx !== null && (
+        {activeProject && isPopupOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            transition={{ duration: 0.35 }}
-            className="absolute bottom-4 left-4 right-4 z-20 p-5 rounded-2xl bg-black/85 backdrop-blur-2xl border border-white/15 shadow-2xl max-w-4xl mx-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="absolute inset-0 z-30 flex items-center justify-center"
+            onClick={handleClose}
           >
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-              {/* Left Info Column */}
-              <div className="flex-1 space-y-1.5">
-                <div className="flex items-center gap-3">
-                  <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] tracking-widest border border-amber-500/30">
-                    {activeProject.num || `NS-${focusedFrameIdx + 1}`}
+            {/* Dark overlay backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-md" 
+            />
+
+            {/* Main popup container */}
+            <motion.div
+              initial={{ scale: 0.88, opacity: 0, y: 25 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 15 }}
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              className="relative z-40 w-[92vw] max-w-6xl h-[85vh] flex flex-col rounded-3xl overflow-hidden border border-white/15 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Top Bar */}
+              <div className="flex items-center justify-between px-6 py-4 bg-black/90 backdrop-blur-2xl border-b border-white/10 shrink-0">
+                <div className="flex items-center gap-4">
+                  <span className="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-mono text-[11px] tracking-widest border border-amber-500/30">
+                    {activeProject.num || `NS-${focusedFrameIdx! + 1}`}
                   </span>
-                  <span className="text-xs font-mono text-gray-400">
-                    {activeProject.location} · {activeProject.year}
-                  </span>
-                  <span className="text-xs font-mono text-gray-400">
-                    {activeProject.area}
-                  </span>
+                  <div>
+                    <h3 className="text-base font-bold tracking-tight text-white">
+                      {activeProject.name}
+                    </h3>
+                    <p className="text-[11px] font-mono text-gray-400">
+                      {activeProject.location} · {activeProject.year} · {activeProject.area}
+                    </p>
+                  </div>
                 </div>
 
-                <h3 className="text-lg font-bold tracking-tight text-white">
-                  {activeProject.name}
-                </h3>
+                <div className="flex items-center gap-2">
+                  {/* Image Counter */}
+                  <span className="px-3 py-1.5 rounded-lg bg-white/10 text-amber-300 font-mono text-[11px] font-bold border border-white/10">
+                    {activeImageIdx + 1} / {activeGalleryImages.length}
+                  </span>
 
-                <p className="text-xs text-gray-300 line-clamp-2 max-w-2xl leading-relaxed">
-                  {activeProject.desc}
-                </p>
+                  {/* View Specs */}
+                  {onOpenProjectDrawer && (
+                    <button
+                      onClick={() => onOpenProjectDrawer(activeProject)}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white hover:text-black text-white text-[11px] font-mono transition-all cursor-pointer border border-white/10"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Specs</span>
+                    </button>
+                  )}
+
+                  {/* Close */}
+                  <button
+                    onClick={handleClose}
+                    className="p-2 rounded-lg bg-white/10 hover:bg-white hover:text-black text-white transition-all cursor-pointer border border-white/10"
+                    title="Close (Esc)"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
-              {/* Right Column: Single Frame Gallery Slider Controls */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto border-t md:border-t-0 pt-3 md:pt-0 border-white/10">
-                {/* Image Navigation Buttons (< >) & Counter */}
-                <div className="flex items-center gap-2 bg-white/10 border border-white/15 p-1.5 rounded-xl">
+              {/* Image Display Area */}
+              <div className="relative flex-1 bg-neutral-950 flex items-center justify-center overflow-hidden">
+                {/* The Image */}
+                <motion.img
+                  key={activeGalleryImages[activeImageIdx]}
+                  src={activeGalleryImages[activeImageIdx]}
+                  alt={`${activeProject.name} - Image ${activeImageIdx + 1}`}
+                  className="max-w-full max-h-full object-contain select-none"
+                  initial={{ opacity: 0, scale: 1.02 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  draggable={false}
+                />
+
+                {/* Left Arrow */}
+                {activeGalleryImages.length > 1 && (
                   <button
                     onClick={() => {
+                      if (focusedFrameIdx === null) return;
                       setFrameImageIndices((prev) => {
                         const cur = prev[focusedFrameIdx] || 0;
                         const nextVal = (cur - 1 + activeGalleryImages.length) % activeGalleryImages.length;
                         return { ...prev, [focusedFrameIdx]: nextVal };
                       });
                     }}
-                    className="p-2 rounded-lg bg-white/10 hover:bg-white hover:text-black transition-all active:scale-90 text-white cursor-pointer"
-                    title="Previous Image (Left Arrow)"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/60 hover:bg-white hover:text-black text-white backdrop-blur-md border border-white/20 transition-all active:scale-90 cursor-pointer shadow-xl"
+                    title="Previous Image"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-5 h-5" />
                   </button>
+                )}
 
-                  <span className="px-3 text-xs font-mono font-bold text-amber-300 min-w-[85px] text-center">
-                    IMG {activeImageIdx + 1} / {activeGalleryImages.length}
-                  </span>
-
+                {/* Right Arrow */}
+                {activeGalleryImages.length > 1 && (
                   <button
                     onClick={() => {
+                      if (focusedFrameIdx === null) return;
                       setFrameImageIndices((prev) => {
                         const cur = prev[focusedFrameIdx] || 0;
                         const nextVal = (cur + 1) % activeGalleryImages.length;
                         return { ...prev, [focusedFrameIdx]: nextVal };
                       });
                     }}
-                    className="p-2 rounded-lg bg-white/10 hover:bg-white hover:text-black transition-all active:scale-90 text-white cursor-pointer"
-                    title="Next Image (Right Arrow)"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/60 hover:bg-white hover:text-black text-white backdrop-blur-md border border-white/20 transition-all active:scale-90 cursor-pointer shadow-xl"
+                    title="Next Image"
                   >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* View Details Button */}
-                {onOpenProjectDrawer && (
-                  <button
-                    onClick={() => onOpenProjectDrawer(activeProject)}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white text-black font-semibold text-xs hover:bg-gray-200 transition-all shadow-lg active:scale-95 w-full sm:w-auto cursor-pointer"
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                    <span>View Project Specs</span>
+                    <ChevronRight className="w-5 h-5" />
                   </button>
                 )}
 
-                {/* Close Focus Button */}
-                <button
-                  onClick={() => setFocusedFrameIdx(null)}
-                  className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition-all cursor-pointer"
-                  title="Close Focus View (Esc)"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                {/* Dot indicators */}
+                {activeGalleryImages.length > 1 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-2 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
+                    {activeGalleryImages.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          if (focusedFrameIdx === null) return;
+                          setFrameImageIndices((prev) => ({ ...prev, [focusedFrameIdx]: i }));
+                        }}
+                        className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                          i === activeImageIdx
+                            ? "bg-amber-400 w-6"
+                            : "bg-white/30 hover:bg-white/60"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
+
+              {/* Bottom description bar */}
+              <div className="px-6 py-3 bg-black/90 backdrop-blur-2xl border-t border-white/10 shrink-0">
+                <p className="text-xs text-gray-400 line-clamp-2 max-w-4xl leading-relaxed">
+                  {activeProject.desc}
+                </p>
+              </div>
+            </motion.div>
           </motion.div>
         )}
 
-        {/* HUD for COMING SOON Frames */}
-        {isComingSoonFocused && (
+        {/* Popup for COMING SOON Frames */}
+        {isComingSoonFocused && isPopupOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            transition={{ duration: 0.35 }}
-            className="absolute bottom-4 left-4 right-4 z-20 p-5 rounded-2xl bg-black/85 backdrop-blur-2xl border border-amber-500/30 shadow-2xl max-w-3xl mx-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
+            className="absolute inset-0 z-30 flex items-center justify-center"
+            onClick={handleClose}
           >
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-amber-400" />
-                  <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] tracking-widest border border-amber-500/40 uppercase">
-                    NS — UPCOMING FRAME #{focusedFrameIdx + 1}
-                  </span>
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="relative z-40 w-[80vw] max-w-xl p-10 rounded-3xl bg-neutral-900/95 backdrop-blur-2xl border border-amber-500/30 shadow-2xl text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col items-center gap-4">
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+                  <Clock className="w-8 h-8 text-amber-400" />
                 </div>
-                <h3 className="text-lg font-bold text-white">
-                  Upcoming {selectedCategory} Project
+                <span className="px-3 py-1 rounded-lg bg-amber-500/20 text-amber-300 font-mono text-[10px] tracking-widest border border-amber-500/40 uppercase">
+                  NS — UPCOMING
+                </span>
+                <h3 className="text-2xl font-bold text-white">
+                  Coming Soon
                 </h3>
-                <p className="text-xs text-gray-400">
-                  This exhibition frame is reserved for a future Noyyal Studio {selectedCategory.toLowerCase()} project currently under design & research.
+                <p className="text-sm text-gray-400 max-w-md leading-relaxed">
+                  This exhibition frame is reserved for an upcoming Noyyal Studio {selectedCategory.toLowerCase()} project currently under design & research.
                 </p>
+                <button
+                  onClick={handleClose}
+                  className="mt-4 flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white hover:text-black text-white text-sm font-mono transition-all cursor-pointer border border-white/15"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Back to Gallery</span>
+                </button>
               </div>
-
-              <button
-                onClick={() => setFocusedFrameIdx(null)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white hover:text-black text-white text-xs font-mono transition-all cursor-pointer shrink-0"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>Hall View</span>
-              </button>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* ── FLOATING HELPER BADGE ── */}
-      {focusedFrameIdx === null && (
+      {focusedFrameIdx === null && !isPopupOpen && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/70 backdrop-blur-md border border-white/15 text-xs text-gray-300 font-mono tracking-wider animate-bounce">
             <Compass className="w-4 h-4 text-amber-400" />
-            <span>Click any 3D picture frame to view project artwork</span>
+            <span>Click any 3D picture frame to zoom in & view artwork</span>
           </div>
         </div>
       )}
