@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
-import { useGLTF, OrbitControls, Html } from "@react-three/drei";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
+import { useGLTF, OrbitControls, Html, Text } from "@react-three/drei";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, AnimatePresence } from "framer-motion";
@@ -156,8 +156,9 @@ function GallerySceneContent({
             let surfaceNormal = new THREE.Vector3(0, 0, 1);
 
             const geom = mesh.geometry as THREE.BufferGeometry;
-            if (geom && geom.attributes.position) {
+            if (geom && geom.attributes.position && geom.attributes.uv) {
               const posAttr = geom.attributes.position;
+              const uvAttr = geom.attributes.uv;
               const matIndex = materialsList.indexOf(mat);
               const group = geom.groups.find((g) => g.materialIndex === matIndex);
               const index = geom.index;
@@ -189,17 +190,43 @@ function GallerySceneContent({
                 worldPos = new THREE.Vector3();
                 box.getCenter(worldPos);
 
-                // Exact bottom-center position at the bottom of the picture frame
-                bottomCenterPos = new THREE.Vector3(
-                  worldPos.x,
-                  box.min.y + 0.10,
-                  worldPos.z
-                );
+                // Extract exact corner vertices using UV coordinates (u: 0->1, v: 0->1)
+                let pBL: THREE.Vector3 | null = null;
+                let pBR: THREE.Vector3 | null = null;
+                let pTL: THREE.Vector3 | null = null;
+                let pTR: THREE.Vector3 | null = null;
 
-                // Exact surface normal facing inward towards the room center
-                const e1 = verts[1].clone().sub(verts[0]);
-                const e2 = verts[2].clone().sub(verts[0]);
-                surfaceNormal = new THREE.Vector3().crossVectors(e1, e2).normalize();
+                for (let i = 0; i < posAttr.count; i++) {
+                  const v = new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+                  v.applyMatrix4(mesh.matrixWorld);
+                  const u = uvAttr.getX(i);
+                  const vCoord = uvAttr.getY(i);
+
+                  if (u < 0.5 && vCoord < 0.5 && !pBL) pBL = v;
+                  else if (u >= 0.5 && vCoord < 0.5 && !pBR) pBR = v;
+                  else if (u < 0.5 && vCoord >= 0.5 && !pTL) pTL = v;
+                  else if (u >= 0.5 && vCoord >= 0.5 && !pTR) pTR = v;
+                }
+
+                if (pBL && pBR && pTL && pTR) {
+                  // Exact bottom-center point at u = 0.5, v = 0.09 (horizontal center of bottom plaque)
+                  const u = 0.5, v = 0.09;
+                  bottomCenterPos = new THREE.Vector3()
+                    .addScaledVector(pBL, (1 - u) * (1 - v))
+                    .addScaledVector(pBR, u * (1 - v))
+                    .addScaledVector(pTL, (1 - u) * v)
+                    .addScaledVector(pTR, u * v);
+
+                  // Surface normal from quad axes
+                  const uAxis = pBR.clone().sub(pBL).normalize();
+                  const vAxis = pTL.clone().sub(pBL).normalize();
+                  surfaceNormal = new THREE.Vector3().crossVectors(uAxis, vAxis).normalize();
+                } else {
+                  bottomCenterPos = new THREE.Vector3(worldPos.x, box.min.y + 0.10, worldPos.z);
+                  const e1 = verts[1].clone().sub(verts[0]);
+                  const e2 = verts[2].clone().sub(verts[0]);
+                  surfaceNormal = new THREE.Vector3().crossVectors(e1, e2).normalize();
+                }
 
                 const toCenter = new THREE.Vector3(0, worldPos.y, 0).sub(worldPos);
                 if (surfaceNormal.dot(toCenter) < 0) {
@@ -272,6 +299,29 @@ function GallerySceneContent({
     return sum.divideScalar(framesData.length);
   }, [framesData, targetScale]);
 
+  // Active per-frame boundary lock: strictly keep camera & target inside the exhibition hall
+  useFrame(() => {
+    // Safe interior bounding limits of the 3D Gallery hall
+    // (Inner walls are at ±6.16 in X and Z, floor at -1.55, ceiling at +3.27)
+    const SAFE_MIN_X = -4.2;
+    const SAFE_MAX_X = 4.2;
+    const SAFE_MIN_Y = -0.2;
+    const SAFE_MAX_Y = 2.2;
+    const SAFE_MIN_Z = -4.2;
+    const SAFE_MAX_Z = 4.2;
+
+    camera.position.x = THREE.MathUtils.clamp(camera.position.x, SAFE_MIN_X, SAFE_MAX_X);
+    camera.position.y = THREE.MathUtils.clamp(camera.position.y, SAFE_MIN_Y, SAFE_MAX_Y);
+    camera.position.z = THREE.MathUtils.clamp(camera.position.z, SAFE_MIN_Z, SAFE_MAX_Z);
+
+    if (controlsRef.current) {
+      // Keep orbit target securely inside room interior
+      controlsRef.current.target.x = THREE.MathUtils.clamp(controlsRef.current.target.x, -3.5, 3.5);
+      controlsRef.current.target.y = THREE.MathUtils.clamp(controlsRef.current.target.y, -0.2, 1.5);
+      controlsRef.current.target.z = THREE.MathUtils.clamp(controlsRef.current.target.z, -3.5, 3.5);
+    }
+  });
+
   // Camera Zoom Animation: Fly close in front of clicked frame, or return to overview
   useEffect(() => {
     if (!controlsRef.current) return;
@@ -279,7 +329,7 @@ function GallerySceneContent({
     gsap.killTweensOf(camera.position);
     gsap.killTweensOf(controlsRef.current.target);
 
-    const overviewCamPos = new THREE.Vector3(roomCenter.x + 2.2, roomCenter.y - 0.2, roomCenter.z);
+    const overviewCamPos = new THREE.Vector3(roomCenter.x + 2.0, roomCenter.y - 0.2, roomCenter.z);
     const overviewTarget = new THREE.Vector3(roomCenter.x - 1.0, roomCenter.y - 0.2, roomCenter.z);
 
     if (focusedFrameIdx !== null && framesData[focusedFrameIdx]) {
@@ -288,7 +338,9 @@ function GallerySceneContent({
 
       // Gentle, natural camera glide from overview towards the frame (stays 100% inside room interior)
       const targetCamPos = overviewCamPos.clone().lerp(framePos, 0.28);
-      targetCamPos.y = THREE.MathUtils.lerp(overviewCamPos.y, framePos.y, 0.5);
+      targetCamPos.x = THREE.MathUtils.clamp(targetCamPos.x, -4.0, 4.0);
+      targetCamPos.y = THREE.MathUtils.clamp(THREE.MathUtils.lerp(overviewCamPos.y, framePos.y, 0.5), 0.2, 1.8);
+      targetCamPos.z = THREE.MathUtils.clamp(targetCamPos.z, -4.0, 4.0);
 
       gsap.to(camera.position, {
         x: targetCamPos.x,
@@ -305,9 +357,9 @@ function GallerySceneContent({
       });
 
       gsap.to(controlsRef.current.target, {
-        x: framePos.x,
-        y: framePos.y,
-        z: framePos.z,
+        x: THREE.MathUtils.clamp(framePos.x, -3.8, 3.8),
+        y: THREE.MathUtils.clamp(framePos.y, 0.0, 1.6),
+        z: THREE.MathUtils.clamp(framePos.z, -3.8, 3.8),
         duration: 0.8,
         ease: "power2.inOut",
         onUpdate: () => {
@@ -315,7 +367,7 @@ function GallerySceneContent({
         }
       });
     } else {
-      // Return smoothly to hall overview (rotated 90 degrees to the left)
+      // Return smoothly to hall overview
       gsap.to(camera.position, {
         x: overviewCamPos.x,
         y: overviewCamPos.y,
@@ -344,12 +396,16 @@ function GallerySceneContent({
     <>
       <OrbitControls
         ref={controlsRef}
-        target={[-1.0, 0.5, 0]}
+        target={[-1.0, 0.35, 0]}
         enableDamping
-        dampingFactor={0.05}
-        maxPolarAngle={Math.PI / 2 + 0.05}
-        minDistance={0.1}
-        maxDistance={6.0}
+        dampingFactor={0.06}
+        enablePan={false}
+        enableZoom={true}
+        zoomSpeed={0.5}
+        minPolarAngle={Math.PI * 0.22}
+        maxPolarAngle={Math.PI * 0.51}
+        minDistance={0.5}
+        maxDistance={3.2}
       />
 
       <group ref={groupRef} scale={targetScale}>
@@ -357,6 +413,51 @@ function GallerySceneContent({
 
         {/* Ambient Warm Interior Gallery Point Light */}
         <pointLight position={[roomCenter.x, roomCenter.y + 1.8, roomCenter.z]} intensity={3.8} color="#fffaf0" />
+
+        {/* ── ARCHITECTURAL WALL TYPOGRAPHY (PRIMARY VIEW FRONT WALL) ── */}
+        <group position={[-3.94, 1.44, 0]} rotation={[0, Math.PI / 2, 0]}>
+          {/* Studio Monograph Label */}
+          <Text
+            position={[0, 0.18, 0]}
+            fontSize={0.062}
+            letterSpacing={0.26}
+            color="#94a3b8"
+            anchorX="center"
+            anchorY="middle"
+          >
+            NOYYAL ARCHITECTURAL STUDIO
+          </Text>
+
+          {/* Main Category Project Type Title */}
+          <Text
+            position={[0, 0.04, 0]}
+            fontSize={0.19}
+            letterSpacing={0.16}
+            color="#ffffff"
+            anchorX="center"
+            anchorY="middle"
+          >
+            {selectedCategory.toUpperCase()}
+          </Text>
+
+          {/* Thin Architectural Divider Line */}
+          <mesh position={[0, -0.065, 0]}>
+            <planeGeometry args={[1.5, 0.003]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.3} />
+          </mesh>
+
+          {/* Exhibition Subtitle & Project Count */}
+          <Text
+            position={[0, -0.12, 0]}
+            fontSize={0.052}
+            letterSpacing={0.22}
+            color="#cbd5e1"
+            anchorX="center"
+            anchorY="middle"
+          >
+            {`EXHIBITION HALL · ${categoryProjects.length} CURATED PROJECTS`}
+          </Text>
+        </group>
 
         {/* Pixel-Perfect Clickable Hitboxes directly using each frame's exact surface quad geometry */}
         {framesData.map((frame, idx) => {
@@ -401,12 +502,12 @@ function GallerySceneContent({
             <group
               key={`hotspot-${frame.matName}`}
               position={[
-                frame.bottomCenterPos.x + frame.surfaceNormal.x * 0.04,
+                frame.bottomCenterPos.x + frame.surfaceNormal.x * 0.015,
                 frame.bottomCenterPos.y,
-                frame.bottomCenterPos.z + frame.surfaceNormal.z * 0.04
+                frame.bottomCenterPos.z + frame.surfaceNormal.z * 0.015
               ]}
             >
-              <Html center distanceFactor={11} zIndexRange={[15, 0]}>
+              <Html center distanceFactor={11} zIndexRange={[20, 0]}>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -431,19 +532,19 @@ function GallerySceneContent({
                       );
                     }
                   }}
-                  className="relative flex items-center justify-center group cursor-pointer focus:outline-none select-none transition-transform duration-200 hover:scale-125 active:scale-90"
+                  className="relative flex items-center justify-center group cursor-pointer focus:outline-none select-none transition-transform duration-200 hover:scale-135 active:scale-90"
                   aria-label={`View ${frame.project.name}`}
                 >
                   {/* Outer Pulsing Silver Ripple Wave */}
-                  <span className="absolute w-6 h-6 rounded-full border border-slate-200/80 animate-ping opacity-75 pointer-events-none" />
+                  <span className="absolute w-7 h-7 rounded-full border border-slate-200/90 animate-ping opacity-80 pointer-events-none" />
 
                   {/* Soft Silver Aura Glow */}
-                  <span className="absolute w-7 h-7 rounded-full bg-slate-300/25 blur-[3px] animate-pulse pointer-events-none" />
+                  <span className="absolute w-8 h-8 rounded-full bg-slate-300/30 blur-[4px] animate-pulse pointer-events-none" />
 
                   {/* Shining Metallic Silver Dot */}
-                  <div className="relative w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-slate-400 via-white to-slate-200 border border-white shadow-[0_0_10px_rgba(255,255,255,0.95),0_0_18px_rgba(210,230,255,0.7)] group-hover:shadow-[0_0_16px_rgba(255,255,255,1),0_0_24px_rgba(230,240,255,1)] transition-all">
+                  <div className="relative w-4 h-4 rounded-full bg-gradient-to-tr from-slate-400 via-white to-slate-200 border border-white shadow-[0_0_12px_rgba(255,255,255,1),0_0_22px_rgba(210,230,255,0.85)] group-hover:shadow-[0_0_18px_rgba(255,255,255,1),0_0_28px_rgba(230,240,255,1)] transition-all">
                     {/* Metallic Specular Highlight Glint */}
-                    <span className="absolute top-[2px] left-[2px] w-1 h-1 rounded-full bg-white opacity-95 pointer-events-none" />
+                    <span className="absolute top-[2.5px] left-[2.5px] w-1.5 h-1.5 rounded-full bg-white opacity-95 pointer-events-none" />
                   </div>
                 </button>
               </Html>
@@ -627,7 +728,7 @@ export default function VirtualGalleryHall({
 
       {/* ── 3D CANVAS VIEWPORT ── */}
       <Canvas
-        camera={{ position: [2.2, 1.4, 0], fov: 50 }}
+        camera={{ position: [2.0, 0.35, 0], fov: 50 }}
         className="w-full h-full cursor-none"
         onPointerMissed={() => {
           if (typeof window !== "undefined") {
