@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { useGLTF, OrbitControls, Html, Text } from "@react-three/drei";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,7 +14,6 @@ import {
   ArrowLeft, 
   Box,
   RotateCcw,
-  Compass,
   Clock,
   ExternalLink
 } from "lucide-react";
@@ -74,12 +74,7 @@ function GallerySceneContent({
 }) {
   const { scene } = useGLTF(MODEL_PATH);
   const { camera } = useThree();
-  const controlsRef = useRef<any>(null);
-  const groupRef = useRef<THREE.Group>(null);
-
-  // Frames state and materials reference map
-  const [framesData, setFramesData] = useState<FrameData[]>([]);
-  const materialsMapRef = useRef<Map<string, THREE.MeshStandardMaterial>>(new Map());
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
   // Model scale fit
   const targetScale = useMemo(() => {
@@ -106,8 +101,8 @@ function GallerySceneContent({
   }, [categoryProjects]);
 
   // Gather frame meshes metadata and configure materials
-  useEffect(() => {
-    if (!scene) return;
+  const { orderedFrames, matMap } = useMemo(() => {
+    if (!scene) return { orderedFrames: [], matMap: new Map<string, THREE.MeshStandardMaterial>() };
     scene.updateMatrixWorld(true);
 
     const extractedMap = new Map<string, FrameData>();
@@ -250,24 +245,23 @@ function GallerySceneContent({
       }
     });
 
-    materialsMapRef.current = matMap;
-
-    const orderedFrames: FrameData[] = VISIBLE_FRAME_MATERIALS_ORDER
+    const orderedFrames = VISIBLE_FRAME_MATERIALS_ORDER
       .map((matName) => extractedMap.get(matName))
       .filter(Boolean) as FrameData[];
 
-    if (orderedFrames.length === 0) return;
+    return { orderedFrames, matMap };
+  }, [scene]);
 
-    const sortedFrames = assignProjectsToFrames(orderedFrames, categoryProjects);
-    setFramesData(sortedFrames);
-  }, [scene, categoryProjects]);
+  const framesData = useMemo(() => {
+    return assignProjectsToFrames(orderedFrames, categoryProjects);
+  }, [orderedFrames, categoryProjects]);
 
   // Update frame textures: Projects for available slots, "COMING SOON" for empty slots
   useEffect(() => {
     if (framesData.length === 0) return;
 
     framesData.forEach((frame, idx) => {
-      const mat = materialsMapRef.current.get(frame.matName);
+      const mat = matMap.get(frame.matName);
       if (!mat) return;
 
       const isFocused = focusedFrameIdx === idx;
@@ -289,7 +283,7 @@ function GallerySceneContent({
 
       mat.needsUpdate = true;
     });
-  }, [framesData, frameImageIndices, focusedFrameIdx, selectedCategory]);
+  }, [framesData, frameImageIndices, focusedFrameIdx, selectedCategory, matMap]);
 
   // Compute dynamic room center from frame positions
   const roomCenter = useMemo(() => {
@@ -300,7 +294,7 @@ function GallerySceneContent({
   }, [framesData, targetScale]);
 
   // Active per-frame boundary lock: strictly keep camera & target inside the exhibition hall
-  useFrame(() => {
+  useFrame((state) => {
     // Safe interior bounding limits of the 3D Gallery hall
     // (Inner walls are at ±6.16 in X and Z, floor at -1.55, ceiling at +3.27)
     const SAFE_MIN_X = -4.2;
@@ -310,9 +304,9 @@ function GallerySceneContent({
     const SAFE_MIN_Z = -4.2;
     const SAFE_MAX_Z = 4.2;
 
-    camera.position.x = THREE.MathUtils.clamp(camera.position.x, SAFE_MIN_X, SAFE_MAX_X);
-    camera.position.y = THREE.MathUtils.clamp(camera.position.y, SAFE_MIN_Y, SAFE_MAX_Y);
-    camera.position.z = THREE.MathUtils.clamp(camera.position.z, SAFE_MIN_Z, SAFE_MAX_Z);
+    state.camera.position.x = THREE.MathUtils.clamp(state.camera.position.x, SAFE_MIN_X, SAFE_MAX_X);
+    state.camera.position.y = THREE.MathUtils.clamp(state.camera.position.y, SAFE_MIN_Y, SAFE_MAX_Y);
+    state.camera.position.z = THREE.MathUtils.clamp(state.camera.position.z, SAFE_MIN_Z, SAFE_MAX_Z);
 
     if (controlsRef.current) {
       // Keep orbit target securely inside room interior
@@ -408,7 +402,7 @@ function GallerySceneContent({
         maxDistance={3.2}
       />
 
-      <group ref={groupRef} scale={targetScale}>
+      <group scale={targetScale}>
         <primitive object={scene} />
 
         {/* Ambient Warm Interior Gallery Point Light */}
@@ -576,6 +570,14 @@ export default function VirtualGalleryHall({
   const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false);
   const [frameImageIndices, setFrameImageIndices] = useState<Record<number, number>>({});
 
+  const [prevCategory, setPrevCategory] = useState(selectedCategory);
+  if (prevCategory !== selectedCategory) {
+    setPrevCategory(selectedCategory);
+    setIsPopupOpen(false);
+    setFocusedFrameIdx(null);
+    setFrameImageIndices({});
+  }
+
   // Filter projects exclusively for the chosen category
   const categoryProjects = useMemo(() => {
     return allProjects.filter((p) => p.category === selectedCategory);
@@ -588,7 +590,7 @@ export default function VirtualGalleryHall({
   }, []);
 
   // Handle camera arrival: smoothly open popup once camera reaches the frame
-  const handleCameraArrived = useCallback((_idx: number) => {
+  const handleCameraArrived = useCallback(() => {
     setIsPopupOpen(true);
   }, []);
 
@@ -642,13 +644,6 @@ export default function VirtualGalleryHall({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [focusedFrameIdx, activeProject, activeGalleryImages, handleClose]);
-
-  // Reset frame focus & image indices when changing category
-  useEffect(() => {
-    setIsPopupOpen(false);
-    setFocusedFrameIdx(null);
-    setFrameImageIndices({});
-  }, [selectedCategory]);
 
   const handleCategoryChange = (cat: ProjectCategory) => {
     setIsPopupOpen(false);

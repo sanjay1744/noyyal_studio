@@ -86,16 +86,14 @@ export default function CinematicScrollModal({
   const [activeStopIndex, setActiveStopIndex] = useState<number>(0);
   
   // Mobile Efficiency & Fit States
-  const [objectFit, setObjectFit] = useState<"cover" | "contain">("cover");
+  const [objectFit, setObjectFit] = useState<"cover" | "contain">(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 640) {
+      return "contain";
+    }
+    return "cover";
+  });
   const [isCardCollapsed, setIsCardCollapsed] = useState<boolean>(true);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
-
-  // Auto-adapt for mobile viewports on mount
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 640) {
-      setObjectFit("contain");
-    }
-  }, []);
 
   // Scene Paging State & Smooth Ease-InOut Animation Engine
   const currentSceneIndexRef = useRef<number>(0);
