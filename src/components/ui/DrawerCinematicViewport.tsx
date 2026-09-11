@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Maximize2, ChevronLeft, ChevronRight, Sparkles, MoveDown } from "lucide-react";
+import { Maximize2, ChevronLeft, ChevronRight, MoveDown } from "lucide-react";
 import { Project } from "@/config/sanity";
 
 interface DrawerCinematicViewportProps {
@@ -82,15 +82,13 @@ export default function DrawerCinematicViewport({
   const [activeStopIndex, setActiveStopIndex] = useState<number>(0);
 
   // Mobile Efficiency & Fit States
-  const [objectFit, setObjectFit] = useState<"cover" | "contain">("cover");
-  const [isCardCollapsed, setIsCardCollapsed] = useState<boolean>(true);
-
-  // Auto-adapt on mobile
-  useEffect(() => {
+  const [objectFit, setObjectFit] = useState<"cover" | "contain">(() => {
     if (typeof window !== "undefined" && window.innerWidth < 640) {
-      setObjectFit("contain");
+      return "contain";
     }
-  }, []);
+    return "cover";
+  });
+  const [isCardCollapsed, setIsCardCollapsed] = useState<boolean>(true);
 
   // Scene Paging State & Smooth Ease-InOut Animation Engine
   const currentStopIndexRef = useRef<number>(0);

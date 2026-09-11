@@ -26,9 +26,7 @@ import {
   Tag, 
   ArrowUpRight,
   Search,
-  Box,
-  MoveDown,
-  Sparkles
+  Box
 } from "lucide-react";
 
 type CategoryFilter = "All" | ProjectCategory;
@@ -129,13 +127,6 @@ function ProjectsContent() {
       }
     });
   }, [searchParams, viewMode]);
-
-  // Guard: in 3D mode, automatically fallback from 'All' to 'Residences'
-  useEffect(() => {
-    if (viewMode === "3d" && activeCategory === "All") {
-      setActiveCategory("Residences");
-    }
-  }, [viewMode, activeCategory]);
 
   // Categories to display: "All" is only shown in Grid mode, hidden in 3D mode
   const displayedCategories = useMemo(() => {
