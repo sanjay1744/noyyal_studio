@@ -5,7 +5,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { gsap } from "gsap";
 import { AnimatePresence } from "framer-motion";
-import { Box } from "lucide-react";
 import { getProjects, Project } from "@/config/sanity";
 import Footer from "@/components/ui/Footer";
 import CinematicScrollModal from "@/components/ui/CinematicScrollModal";

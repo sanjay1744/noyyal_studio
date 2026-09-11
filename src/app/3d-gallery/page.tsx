@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { getProjects, Project, ProjectCategory } from "@/config/sanity";
-import DrawerCinematicViewport from "@/components/ui/DrawerCinematicViewport";
 
 // Dynamically load VirtualGalleryHall to prevent SSR canvas issues
 const VirtualGalleryHall = dynamic(
