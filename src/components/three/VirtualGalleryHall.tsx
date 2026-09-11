@@ -101,155 +101,127 @@ function GallerySceneContent({
   }, [categoryProjects]);
 
   // Gather frame meshes metadata and configure materials
-  const { orderedFrames, matMap } = useMemo(() => {
-    if (!scene) return { orderedFrames: [], matMap: new Map<string, THREE.MeshStandardMaterial>() };
+  const orderedFrames = useMemo<FrameData[]>(() => {
+    if (!scene) return [];
     scene.updateMatrixWorld(true);
 
     const extractedMap = new Map<string, FrameData>();
-    const matMap = new Map<string, THREE.MeshStandardMaterial>();
 
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        const rawMat = mesh.material;
-        const materialsList: THREE.Material[] = Array.isArray(rawMat) ? rawMat : rawMat ? [rawMat] : [];
-
-        materialsList.forEach((mat) => {
-          if (mat && VISIBLE_FRAME_MATERIALS_ORDER.includes(mat.name)) {
-            const clonedMat = new THREE.MeshStandardMaterial({
+        const rawMat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+        if (rawMat && VISIBLE_FRAME_MATERIALS_ORDER.includes(rawMat.name)) {
+          // Initialize stable MeshStandardMaterial on the mesh once
+          if (!mesh.userData._isFrameInitialized) {
+            mesh.userData._isFrameInitialized = true;
+            const customMat = new THREE.MeshStandardMaterial({
               color: new THREE.Color("#ffffff"),
-              roughness: 0.2,
+              roughness: 0.3,
               metalness: 0.0,
-              emissive: new THREE.Color("#000000"),
-              emissiveIntensity: 0.0,
-              emissiveMap: null,
-              map: null,
-              lightMap: null,
-              aoMap: null,
-              roughnessMap: null,
-              metalnessMap: null,
-              normalMap: null,
-              alphaMap: null,
-              transparent: false,
-              opacity: 1.0,
             });
-            clonedMat.name = mat.name;
+            customMat.name = rawMat.name;
+            mesh.material = customMat;
+          }
 
-            if (Array.isArray(mesh.material)) {
-              const idx = mesh.material.indexOf(mat);
-              if (idx !== -1) mesh.material[idx] = clonedMat;
-            } else {
-              mesh.material = clonedMat;
-            }
+          // Extract exact frame quad geometry and compute exact center & normal
+          let quadGeom: THREE.BufferGeometry | null = null;
+          let worldPos = new THREE.Vector3();
+          let bottomCenterPos = new THREE.Vector3();
+          let surfaceNormal = new THREE.Vector3(0, 0, 1);
 
-            matMap.set(mat.name, clonedMat);
+          const geom = mesh.geometry as THREE.BufferGeometry;
+          if (geom && geom.attributes.position && geom.attributes.uv) {
+            const posAttr = geom.attributes.position;
+            const uvAttr = geom.attributes.uv;
+            const count = posAttr.count;
 
-            // Extract exact frame quad geometry and compute exact center & normal
-            let quadGeom: THREE.BufferGeometry | null = null;
-            let worldPos = new THREE.Vector3();
-            let bottomCenterPos = new THREE.Vector3();
-            let surfaceNormal = new THREE.Vector3(0, 0, 1);
+            if (count >= 4) {
+              const box = new THREE.Box3();
+              const posArray = new Float32Array(count * 3);
+              const verts: THREE.Vector3[] = [];
+              for (let i = 0; i < count; i++) {
+                const v = new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+                v.applyMatrix4(mesh.matrixWorld);
+                posArray[i * 3] = v.x;
+                posArray[i * 3 + 1] = v.y;
+                posArray[i * 3 + 2] = v.z;
+                verts.push(v);
+                box.expandByPoint(v);
+              }
+              quadGeom = new THREE.BufferGeometry();
+              quadGeom.setAttribute("position", new THREE.BufferAttribute(posArray, 3));
+              if (count === 4) {
+                quadGeom.setIndex([0, 1, 2, 0, 2, 3]);
+              }
+              quadGeom.computeVertexNormals();
 
-            const geom = mesh.geometry as THREE.BufferGeometry;
-            if (geom && geom.attributes.position && geom.attributes.uv) {
-              const posAttr = geom.attributes.position;
-              const uvAttr = geom.attributes.uv;
-              const matIndex = materialsList.indexOf(mat);
-              const group = geom.groups.find((g) => g.materialIndex === matIndex);
-              const index = geom.index;
-              const start = group ? group.start : 0;
-              const count = group ? group.count : posAttr.count;
+              // Exact geometric bounding-box center of the frame in scene space
+              worldPos = new THREE.Vector3();
+              box.getCenter(worldPos);
 
-              if (count >= 4) {
-                const box = new THREE.Box3();
-                const posArray = new Float32Array(count * 3);
-                const verts: THREE.Vector3[] = [];
-                for (let i = 0; i < count; i++) {
-                  const vIdx = index ? index.getX(start + i) : (start + i);
-                  const v = new THREE.Vector3(posAttr.getX(vIdx), posAttr.getY(vIdx), posAttr.getZ(vIdx));
-                  v.applyMatrix4(mesh.matrixWorld);
-                  posArray[i * 3] = v.x;
-                  posArray[i * 3 + 1] = v.y;
-                  posArray[i * 3 + 2] = v.z;
-                  verts.push(v);
-                  box.expandByPoint(v);
-                }
-                quadGeom = new THREE.BufferGeometry();
-                quadGeom.setAttribute("position", new THREE.BufferAttribute(posArray, 3));
-                if (count === 4) {
-                  quadGeom.setIndex([0, 1, 2, 0, 2, 3]);
-                }
-                quadGeom.computeVertexNormals();
+              // Extract exact corner vertices using UV coordinates (u: 0->1, v: 0->1)
+              let pBL: THREE.Vector3 | null = null;
+              let pBR: THREE.Vector3 | null = null;
+              let pTL: THREE.Vector3 | null = null;
+              let pTR: THREE.Vector3 | null = null;
 
-                // Exact geometric bounding-box center of the frame in scene space
-                worldPos = new THREE.Vector3();
-                box.getCenter(worldPos);
+              for (let i = 0; i < posAttr.count; i++) {
+                const v = new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+                v.applyMatrix4(mesh.matrixWorld);
+                const u = uvAttr.getX(i);
+                const vCoord = uvAttr.getY(i);
 
-                // Extract exact corner vertices using UV coordinates (u: 0->1, v: 0->1)
-                let pBL: THREE.Vector3 | null = null;
-                let pBR: THREE.Vector3 | null = null;
-                let pTL: THREE.Vector3 | null = null;
-                let pTR: THREE.Vector3 | null = null;
+                if (u < 0.5 && vCoord < 0.5 && !pBL) pBL = v;
+                else if (u >= 0.5 && vCoord < 0.5 && !pBR) pBR = v;
+                else if (u < 0.5 && vCoord >= 0.5 && !pTL) pTL = v;
+                else if (u >= 0.5 && vCoord >= 0.5 && !pTR) pTR = v;
+              }
 
-                for (let i = 0; i < posAttr.count; i++) {
-                  const v = new THREE.Vector3(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
-                  v.applyMatrix4(mesh.matrixWorld);
-                  const u = uvAttr.getX(i);
-                  const vCoord = uvAttr.getY(i);
+              if (pBL && pBR && pTL && pTR) {
+                // Exact bottom-center point at u = 0.5, v = 0.09 (horizontal center of bottom plaque)
+                const u = 0.5, v = 0.09;
+                bottomCenterPos = new THREE.Vector3()
+                  .addScaledVector(pBL, (1 - u) * (1 - v))
+                  .addScaledVector(pBR, u * (1 - v))
+                  .addScaledVector(pTL, (1 - u) * v)
+                  .addScaledVector(pTR, u * v);
 
-                  if (u < 0.5 && vCoord < 0.5 && !pBL) pBL = v;
-                  else if (u >= 0.5 && vCoord < 0.5 && !pBR) pBR = v;
-                  else if (u < 0.5 && vCoord >= 0.5 && !pTL) pTL = v;
-                  else if (u >= 0.5 && vCoord >= 0.5 && !pTR) pTR = v;
-                }
+                // Surface normal from quad axes
+                const uAxis = pBR.clone().sub(pBL).normalize();
+                const vAxis = pTL.clone().sub(pBL).normalize();
+                surfaceNormal = new THREE.Vector3().crossVectors(uAxis, vAxis).normalize();
+              } else {
+                bottomCenterPos = new THREE.Vector3(worldPos.x, box.min.y + 0.10, worldPos.z);
+                const e1 = verts[1].clone().sub(verts[0]);
+                const e2 = verts[2].clone().sub(verts[0]);
+                surfaceNormal = new THREE.Vector3().crossVectors(e1, e2).normalize();
+              }
 
-                if (pBL && pBR && pTL && pTR) {
-                  // Exact bottom-center point at u = 0.5, v = 0.09 (horizontal center of bottom plaque)
-                  const u = 0.5, v = 0.09;
-                  bottomCenterPos = new THREE.Vector3()
-                    .addScaledVector(pBL, (1 - u) * (1 - v))
-                    .addScaledVector(pBR, u * (1 - v))
-                    .addScaledVector(pTL, (1 - u) * v)
-                    .addScaledVector(pTR, u * v);
-
-                  // Surface normal from quad axes
-                  const uAxis = pBR.clone().sub(pBL).normalize();
-                  const vAxis = pTL.clone().sub(pBL).normalize();
-                  surfaceNormal = new THREE.Vector3().crossVectors(uAxis, vAxis).normalize();
-                } else {
-                  bottomCenterPos = new THREE.Vector3(worldPos.x, box.min.y + 0.10, worldPos.z);
-                  const e1 = verts[1].clone().sub(verts[0]);
-                  const e2 = verts[2].clone().sub(verts[0]);
-                  surfaceNormal = new THREE.Vector3().crossVectors(e1, e2).normalize();
-                }
-
-                const toCenter = new THREE.Vector3(0, worldPos.y, 0).sub(worldPos);
-                if (surfaceNormal.dot(toCenter) < 0) {
-                  surfaceNormal.negate();
-                }
+              const toCenter = new THREE.Vector3(0, worldPos.y, 0).sub(worldPos);
+              if (surfaceNormal.dot(toCenter) < 0) {
+                surfaceNormal.negate();
               }
             }
-
-            extractedMap.set(mat.name, {
-              name: mesh.name,
-              matName: mat.name,
-              mesh,
-              worldPos,
-              bottomCenterPos,
-              surfaceNormal,
-              quadGeom,
-              project: null,
-            });
           }
-        });
+
+          extractedMap.set(rawMat.name, {
+            name: mesh.name,
+            matName: rawMat.name,
+            mesh,
+            worldPos,
+            bottomCenterPos,
+            surfaceNormal,
+            quadGeom,
+            project: null,
+          });
+        }
       }
     });
 
-    const orderedFrames = VISIBLE_FRAME_MATERIALS_ORDER
+    return VISIBLE_FRAME_MATERIALS_ORDER
       .map((matName) => extractedMap.get(matName))
       .filter(Boolean) as FrameData[];
-
-    return { orderedFrames, matMap };
   }, [scene]);
 
   const framesData = useMemo(() => {
@@ -261,7 +233,9 @@ function GallerySceneContent({
     if (framesData.length === 0) return;
 
     framesData.forEach((frame, idx) => {
-      const mat = matMap.get(frame.matName);
+      const mesh = frame.mesh;
+      if (!mesh) return;
+      const mat = (Array.isArray(mesh.material) ? mesh.material[0] : mesh.material) as THREE.MeshStandardMaterial;
       if (!mat) return;
 
       const isFocused = focusedFrameIdx === idx;
@@ -283,7 +257,7 @@ function GallerySceneContent({
 
       mat.needsUpdate = true;
     });
-  }, [framesData, frameImageIndices, focusedFrameIdx, selectedCategory, matMap]);
+  }, [framesData, frameImageIndices, focusedFrameIdx, selectedCategory]);
 
   // Compute dynamic room center from frame positions
   const roomCenter = useMemo(() => {
