@@ -97,6 +97,26 @@ export const HALLWAYS: HallwayConfig[] = [
   },
 ];
 
+// Portal opening geometry (must match HallwayPortal): the opening is centred 2.1 above the
+// floor and faces local +Z, so the viewer stands along (sin θ, 0, cos θ) from the portal.
+const PORTAL_OPENING_Y = 2.1;
+const FOCUS_DISTANCE = 5.5; // full "looking at the door" framing
+const WALK_IN_DISTANCE = 2.6; // roughly half way to the door before fading out
+const FRAME_CAM_Y = 1.95;
+
+function frameHallway(config: HallwayConfig, distance: number) {
+  const theta = config.portalRot[1];
+  const [px, , pz] = config.portalPos;
+  return {
+    pos: new THREE.Vector3(
+      px + Math.sin(theta) * distance,
+      FRAME_CAM_Y,
+      pz + Math.cos(theta) * distance
+    ),
+    look: new THREE.Vector3(px, PORTAL_OPENING_Y, pz),
+  };
+}
+
 // ── PROCEDURAL RICH HARDWOOD PARQUET FLOOR TEXTURE ──
 function createWoodFloorTexture(): THREE.CanvasTexture {
   if (typeof document === "undefined") {
@@ -444,6 +464,7 @@ function LobbyRotundaContent({
   activeFolder,
   onFolderChange,
   onEnterFolder,
+  onFadeStart,
   isTransitioning,
 }: {
   allProjects: Project[];
@@ -451,9 +472,11 @@ function LobbyRotundaContent({
   activeFolder: ProjectCategory | null;
   onFolderChange: (cat: ProjectCategory | null) => void;
   onEnterFolder: (config: HallwayConfig) => void;
+  onFadeStart: () => void;
   isTransitioning: boolean;
 }) {
   const { camera } = useThree();
+  const walkingRef = useRef(false);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [hoveredHallway, setHoveredHallway] = useState<string | null>(null);
 
@@ -507,8 +530,7 @@ function LobbyRotundaContent({
     if (activeFolder) {
       const config = HALLWAYS.find((h) => h.category === activeFolder);
       if (config) {
-        const targetPos = new THREE.Vector3(...config.focusCamPos);
-        const targetLook = new THREE.Vector3(...config.focusLookAt);
+        const { pos: targetPos, look: targetLook } = frameHallway(config, FOCUS_DISTANCE);
 
         gsap.to(camera.position, {
           x: targetPos.x,
@@ -561,16 +583,18 @@ function LobbyRotundaContent({
   // Handle Walking Through Hallway with Cinematic Acceleration in 3D
   const handleWalkIn = useCallback(
     (config: HallwayConfig) => {
-      if (isTransitioning) return;
+      if (isTransitioning || walkingRef.current) return;
+      walkingRef.current = true;
 
       if (controlsRef.current) {
         controlsRef.current.enabled = false;
+        gsap.killTweensOf(controlsRef.current.target);
       }
 
       gsap.killTweensOf(camera.position);
 
-      const targetCam = new THREE.Vector3(...config.walkInCamPos);
-      const targetLook = new THREE.Vector3(...config.walkInLookAt);
+      // Dolly about half way towards the doorway, centred on the opening, then fade out
+      const { pos: targetCam, look: targetLook } = frameHallway(config, WALK_IN_DISTANCE);
 
       const currentLookAt = new THREE.Vector3();
       if (controlsRef.current) {
@@ -585,14 +609,14 @@ function LobbyRotundaContent({
         },
       });
 
-      // 1. Align camera lookAt directly into hallway
+      // 1. Centre the view on the doorway opening
       timeline.to(
         currentLookAt,
         {
           x: targetLook.x,
           y: targetLook.y,
           z: targetLook.z,
-          duration: 0.5,
+          duration: 0.7,
           ease: "power2.inOut",
           onUpdate: () => {
             camera.lookAt(currentLookAt);
@@ -601,23 +625,26 @@ function LobbyRotundaContent({
         0
       );
 
-      // 2. Accelerate camera smoothly down the corridor
+      // 2. Glide towards the doorway (only part of the way)
       timeline.to(
         camera.position,
         {
           x: targetCam.x,
           y: targetCam.y,
           z: targetCam.z,
-          duration: 1.2,
-          ease: "power3.inOut",
+          duration: 1.1,
+          ease: "power2.inOut",
           onUpdate: () => {
             camera.lookAt(currentLookAt);
           },
         },
-        0.15
+        0
       );
+
+      // 3. Start fading to the destination while the camera is still moving
+      timeline.call(onFadeStart, [], 0.5);
     },
-    [isTransitioning, camera, overviewTarget, onEnterFolder]
+    [isTransitioning, camera, overviewTarget, onEnterFolder, onFadeStart]
   );
 
   // Active portal position for focused spotlight
@@ -873,6 +900,7 @@ export default function ProjectsLobbyScene({
     selectedCategory !== "All" ? (selectedCategory as ProjectCategory) : null
   );
   const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+  const [isFading, setIsFading] = useState<boolean>(false);
 
   // Dynamic counts for each category
   const categoryCounts = useMemo(() => {
@@ -942,7 +970,7 @@ export default function ProjectsLobbyScene({
   }, [activeFolder, isTransitioning, handleEnterFolder]);
 
   return (
-    <div className="relative w-full h-full min-h-[600px] bg-[#f7f6f2] text-black overflow-hidden select-none">
+    <div className="relative w-full h-full min-h-0 bg-[#f7f6f2] text-black overflow-hidden select-none">
       {/* ── TOP BREADCRUMB & CONTROLS HUD ── */}
       <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-black/10 shadow-xs pointer-events-auto">
@@ -1031,6 +1059,14 @@ export default function ProjectsLobbyScene({
         </div>
       </div>
 
+      {/* ── FADE-OUT OVERLAY (walk-in transition) ── */}
+      <motion.div
+        initial={false}
+        animate={{ opacity: isFading ? 1 : 0 }}
+        transition={{ duration: 0.55, ease: "easeInOut" }}
+        className="absolute inset-0 z-30 bg-[#f7f6f2] pointer-events-none"
+      />
+
       {/* ── 3D CANVAS VIEWPORT ── */}
       <Canvas
         camera={{ position: [0, 1.45, 4.4], fov: 44 }}
@@ -1046,6 +1082,7 @@ export default function ProjectsLobbyScene({
             activeFolder={activeFolder}
             onFolderChange={setActiveFolder}
             onEnterFolder={handleEnterFolder}
+            onFadeStart={() => setIsFading(true)}
             isTransitioning={isTransitioning}
           />
         </Suspense>

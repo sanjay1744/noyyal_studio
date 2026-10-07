@@ -530,6 +530,7 @@ export default function VirtualGalleryHall({
   selectedCategory,
   onSelectCategory,
   onBackToGrid,
+  onBackToLobby,
   onOpenProjectDrawer,
   hideTopHud = false,
 }: {
@@ -537,6 +538,7 @@ export default function VirtualGalleryHall({
   selectedCategory: ProjectCategory;
   onSelectCategory: (cat: ProjectCategory) => void;
   onBackToGrid?: () => void;
+  onBackToLobby?: () => void;
   onOpenProjectDrawer?: (project: Project) => void;
   hideTopHud?: boolean;
 }) {
@@ -629,7 +631,7 @@ export default function VirtualGalleryHall({
   const categoriesList: ProjectCategory[] = ["Residences", "Commercial", "Interior", "Unbuilt"];
 
   return (
-    <div className="relative w-full h-full min-h-[600px] bg-neutral-950 text-white overflow-hidden select-none">
+    <div className={`relative w-full h-full ${hideTopHud ? "min-h-0" : "min-h-[600px]"} bg-neutral-950 text-white overflow-hidden select-none`}>
       {/* ── TOP NAVIGATION HUD ── */}
       {!hideTopHud && (
         <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
@@ -693,6 +695,17 @@ export default function VirtualGalleryHall({
             )}
           </div>
         </div>
+      )}
+
+      {/* ── BACK TO PROJECTS LOBBY ── */}
+      {onBackToLobby && (
+        <button
+          onClick={onBackToLobby}
+          className="absolute top-4 left-4 z-20 flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 hover:bg-white hover:text-black backdrop-blur-md border border-white/15 text-white text-[10px] font-mono tracking-[0.2em] uppercase transition-all cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back</span>
+        </button>
       )}
 
       {/* ── 3D CANVAS VIEWPORT ── */}
