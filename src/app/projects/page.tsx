@@ -52,6 +52,19 @@ const VirtualGalleryHall = dynamic(
   }
 );
 
+const ProjectsLobbyScene = dynamic(
+  () => import("@/components/three/ProjectsLobbyScene"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[650px] flex flex-col items-center justify-center bg-[#f7f6f2] text-black font-mono text-xs tracking-widest uppercase rounded-2xl">
+        <div className="w-10 h-10 border-2 border-black/20 border-t-amber-500 rounded-full animate-spin mb-4" />
+        <span>Loading 3D Rotunda Lobby...</span>
+      </div>
+    ),
+  }
+);
+
 function ProjectsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -103,11 +116,7 @@ function ProjectsContent() {
           (c) => c.toLowerCase() === catParam.toLowerCase()
         );
         if (foundCategory) {
-          if (viewMode === "3d" && foundCategory === "All") {
-            setActiveCategory("Residences");
-          } else {
-            setActiveCategory(foundCategory);
-          }
+          setActiveCategory(foundCategory);
         }
       }
 
@@ -128,13 +137,10 @@ function ProjectsContent() {
     });
   }, [searchParams, viewMode]);
 
-  // Categories to display: "All" is only shown in Grid mode, hidden in 3D mode
+  // Categories to display
   const displayedCategories = useMemo(() => {
-    if (viewMode === "3d") {
-      return CATEGORIES.filter((cat) => cat !== "All");
-    }
     return CATEGORIES;
-  }, [viewMode]);
+  }, []);
 
   // Compute category counts
   const categoryCounts = useMemo(() => {
@@ -393,20 +399,49 @@ function ProjectsContent() {
           </div>
         )}
 
-        {/* ── VIEW MODE: 3D EXHIBITION HALL (FULL SCREEN EDGE-TO-EDGE) ── */}
+        {/* ── VIEW MODE: 3D EXHIBITION HALL & ROTUNDA LOBBY (FULL SCREEN EDGE-TO-EDGE) ── */}
         {viewMode === "3d" && (
           <div className="w-full h-full">
-            <VirtualGalleryHall
-              allProjects={allProjects}
-              selectedCategory={activeCategory === "All" ? "Residences" : activeCategory}
-              onSelectCategory={(cat) => handleCategorySelect(cat)}
-              onBackToGrid={() => setViewMode("grid")}
-              onOpenProjectDrawer={(proj) => {
-                const idx = allProjects.indexOf(proj);
-                handleOpenProject(proj, idx);
-              }}
-              hideTopHud={true}
-            />
+            <AnimatePresence mode="wait">
+              {activeCategory === "All" ? (
+                <motion.div
+                  key="lobby-rotunda"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full h-full"
+                >
+                  <ProjectsLobbyScene
+                    allProjects={allProjects}
+                    selectedCategory={activeCategory}
+                    onSelectCategory={(cat) => handleCategorySelect(cat)}
+                    onBackToGrid={() => setViewMode("grid")}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={`hall-${activeCategory}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full h-full"
+                >
+                  <VirtualGalleryHall
+                    allProjects={allProjects}
+                    selectedCategory={activeCategory}
+                    onSelectCategory={(cat) => handleCategorySelect(cat)}
+                    onBackToGrid={() => setViewMode("grid")}
+                    onOpenProjectDrawer={(proj) => {
+                      const idx = allProjects.indexOf(proj);
+                      handleOpenProject(proj, idx);
+                    }}
+                    hideTopHud={true}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
