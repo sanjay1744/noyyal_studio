@@ -32,7 +32,7 @@ export default function Navigation() {
   const navItems = [
     { label: "Projects", href: "/projects" },
     { label: "About Us", href: "/about-us" },
-    { label: "Research", href: "/research" },
+    // { label: "Research", href: "/research" }, // hidden for now; page lives in src/app/_research
     { label: "BTS", href: "/bts" },
     { label: "Contact", href: "/contact" },
   ];

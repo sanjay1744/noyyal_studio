@@ -29,6 +29,10 @@ import {
   Box
 } from "lucide-react";
 
+// Grid view is switched off for now. Set to true to bring back the grid view,
+// its filter bar (year/search) and the "back to grid" button in the 3D hall.
+const SHOW_GRID_VIEW = false;
+
 type CategoryFilter = "All" | ProjectCategory;
 
 const CATEGORIES: CategoryFilter[] = [
@@ -52,12 +56,25 @@ const VirtualGalleryHall = dynamic(
   }
 );
 
+const ProjectsLobbyScene = dynamic(
+  () => import("@/components/three/ProjectsLobbyScene"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[650px] flex flex-col items-center justify-center bg-[#f7f6f2] text-black font-mono text-xs tracking-widest uppercase rounded-2xl">
+        <div className="w-10 h-10 border-2 border-black/20 border-t-amber-500 rounded-full animate-spin mb-4" />
+        <span>Loading 3D Rotunda Lobby...</span>
+      </div>
+    ),
+  }
+);
+
 function ProjectsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [activeCategory, setActiveCategory] = useState<CategoryFilter>("Residences");
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>("All");
   const [activeYear, setActiveYear] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [viewMode, setViewMode] = useState<"3d" | "grid">("3d");
@@ -103,11 +120,7 @@ function ProjectsContent() {
           (c) => c.toLowerCase() === catParam.toLowerCase()
         );
         if (foundCategory) {
-          if (viewMode === "3d" && foundCategory === "All") {
-            setActiveCategory("Residences");
-          } else {
-            setActiveCategory(foundCategory);
-          }
+          setActiveCategory(foundCategory);
         }
       }
 
@@ -127,25 +140,6 @@ function ProjectsContent() {
       }
     });
   }, [searchParams, viewMode]);
-
-  // Categories to display: "All" is only shown in Grid mode, hidden in 3D mode
-  const displayedCategories = useMemo(() => {
-    if (viewMode === "3d") {
-      return CATEGORIES.filter((cat) => cat !== "All");
-    }
-    return CATEGORIES;
-  }, [viewMode]);
-
-  // Compute category counts
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { All: allProjects.length };
-    CATEGORIES.forEach((cat) => {
-      if (cat !== "All") {
-        counts[cat] = allProjects.filter((p) => p.category === cat).length;
-      }
-    });
-    return counts;
-  }, [allProjects]);
 
   // Available years list
   const availableYears = useMemo(() => {
@@ -247,45 +241,13 @@ function ProjectsContent() {
   };
 
   return (
-    <div className="w-full min-h-screen flex flex-col bg-transparent text-[#111]">
-      {/* ── TOP CONTROL & FILTER BAR ── */}
-      <header className="sticky top-14 z-30 w-full bg-[#f4f3ef]/90 backdrop-blur-md border-b border-[#e5e3dc] px-4 md:px-8 py-2.5 flex flex-col md:flex-row items-center justify-between gap-3 transition-all select-none">
-        {/* Compact Category Filter Bar */}
-        <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto scrollbar-none py-0.5">
-          {displayedCategories.map((cat) => {
-            const isActive = activeCategory === cat;
-            const count = categoryCounts[cat] || 0;
-
-            return (
-              <button
-                key={cat}
-                onClick={() => handleCategorySelect(cat)}
-                className={clsx(
-                  "relative px-3.5 py-1.5 text-[9.5px] tracking-[0.18em] uppercase font-semibold transition-colors duration-300 rounded-full shrink-0 flex items-center gap-1.5 cursor-pointer",
-                  isActive ? "text-black" : "text-[#777] hover:text-black"
-                )}
-              >
-                {isActive && (
-                  <motion.div
-                    layoutId="activeCategoryPill"
-                    className="absolute inset-0 bg-[#e8e6df] rounded-full border border-[#d8d6ce] shadow-2xs"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-10">{cat}</span>
-                <span 
-                  className={clsx(
-                    "relative z-10 text-[8.5px] px-1.5 py-0.2 rounded-full font-mono transition-colors",
-                    isActive ? "bg-black text-white" : "bg-[#eceae3] text-[#777]"
-                  )}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
+    <div className={clsx("w-full flex flex-col bg-transparent text-[#111]", viewMode === "3d" ? "h-[calc(100dvh-56px)] overflow-hidden" : "min-h-screen")}>
+      {/* ── TOP CONTROL & FILTER BAR (grid view only, disabled via SHOW_GRID_VIEW) ── */}
+      {SHOW_GRID_VIEW && (
+      <header className={clsx(
+        "sticky top-14 z-30 w-full bg-[#f4f3ef]/90 backdrop-blur-md border-b border-[#e5e3dc] px-4 md:px-8 py-2.5 flex-col md:flex-row items-center justify-end gap-3 transition-all select-none",
+        viewMode === "3d" ? "hidden" : "flex"
+      )}>
         {/* Right Tools: Year Filter, Search (Grid/List only) & View Switcher */}
         <div className="flex items-center gap-2.5 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-[#e5e3dc] pt-2 md:pt-0">
           {viewMode !== "3d" && (
@@ -331,12 +293,7 @@ function ProjectsContent() {
           <div className="flex items-center gap-1.5">
             <div className="flex items-center bg-[#eceae3] p-0.5 rounded-full border border-[#dcdcd4]">
               <button
-                onClick={() => {
-                  setViewMode("3d");
-                  if (activeCategory === "All") {
-                    setActiveCategory("Residences");
-                  }
-                }}
+                onClick={() => setViewMode("3d")}
                 className={clsx(
                   "p-1.5 rounded-full transition-all cursor-pointer",
                   viewMode === "3d" ? "bg-white text-black shadow-xs" : "text-[#777] hover:text-black"
@@ -369,13 +326,14 @@ function ProjectsContent() {
           </div>
         </div>
       </header>
+      )}
 
       {/* ── MAIN CONTENT AREA ── */}
       <main
         className={clsx(
           "flex-grow w-full transition-all duration-300",
           viewMode === "3d"
-            ? "p-0 m-0 max-w-none h-[calc(100vh-104px)] overflow-hidden"
+            ? "p-0 m-0 max-w-none h-full min-h-0 overflow-hidden"
             : "px-4 md:px-10 py-6 max-w-[1700px] mx-auto"
         )}
       >
@@ -393,25 +351,55 @@ function ProjectsContent() {
           </div>
         )}
 
-        {/* ── VIEW MODE: 3D EXHIBITION HALL (FULL SCREEN EDGE-TO-EDGE) ── */}
+        {/* ── VIEW MODE: 3D EXHIBITION HALL & ROTUNDA LOBBY (FULL SCREEN EDGE-TO-EDGE) ── */}
         {viewMode === "3d" && (
           <div className="w-full h-full">
-            <VirtualGalleryHall
-              allProjects={allProjects}
-              selectedCategory={activeCategory === "All" ? "Residences" : activeCategory}
-              onSelectCategory={(cat) => handleCategorySelect(cat)}
-              onBackToGrid={() => setViewMode("grid")}
-              onOpenProjectDrawer={(proj) => {
-                const idx = allProjects.indexOf(proj);
-                handleOpenProject(proj, idx);
-              }}
-              hideTopHud={true}
-            />
+            <AnimatePresence mode="wait">
+              {activeCategory === "All" ? (
+                <motion.div
+                  key="lobby-rotunda"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full h-full"
+                >
+                  <ProjectsLobbyScene
+                    allProjects={allProjects}
+                    selectedCategory={activeCategory}
+                    onSelectCategory={(cat) => handleCategorySelect(cat)}
+                    onBackToGrid={SHOW_GRID_VIEW ? () => setViewMode("grid") : undefined}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={`hall-${activeCategory}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="w-full h-full"
+                >
+                  <VirtualGalleryHall
+                    allProjects={allProjects}
+                    selectedCategory={activeCategory}
+                    onSelectCategory={(cat) => handleCategorySelect(cat)}
+                    onBackToGrid={SHOW_GRID_VIEW ? () => setViewMode("grid") : undefined}
+                    onBackToLobby={() => handleCategorySelect("All")}
+                    onOpenProjectDrawer={(proj) => {
+                      const idx = allProjects.indexOf(proj);
+                      handleOpenProject(proj, idx);
+                    }}
+                    hideTopHud={true}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
         {/* ── VIEW MODE: GRID ── */}
-        {viewMode === "grid" && (
+        {SHOW_GRID_VIEW && viewMode === "grid" && (
           <AnimatePresence mode="wait">
             {filteredProjects.length > 0 ? (
               <motion.div
