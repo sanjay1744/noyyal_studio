@@ -53,7 +53,7 @@ export const HALLWAYS: HallwayConfig[] = [
     focusLookAt: [-7.6, 1.45, -2.4],
     walkInCamPos: [-9.5, 1.4, -6.5],
     walkInLookAt: [-10.2, 1.4, -12.0],
-    previewImage: "/projects_/RESIDENCE/THE BLOCK HOUSE/5.png",
+    previewImage: "/projects_/RESIDENCE/THE BLOCK HOUSE/5.webp",
     previewTitle: "House on the Slope",
   },
   {
@@ -79,7 +79,7 @@ export const HALLWAYS: HallwayConfig[] = [
     focusLookAt: [3.3, 1.45, -5.2],
     walkInCamPos: [3.6, 1.4, -10.5],
     walkInLookAt: [3.8, 1.4, -16.0],
-    previewImage: "/projects_/UNBUILT/THE CONTRAST/a1.png",
+    previewImage: "/projects_/UNBUILT/THE CONTRAST/a1.webp",
     previewTitle: "Terra Cotta Monolith Study",
   },
   {

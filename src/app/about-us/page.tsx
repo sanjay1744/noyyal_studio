@@ -50,8 +50,8 @@ const rhythm = [
 ];
 
 const founders = [
-  { n: "N°01", name: "Dinosour", role: "Founder", img: "/images/about-founder-dinosour.png", bio: dinoBio },
-  { n: "N°02", name: "Moon", role: "Co-Founder", img: "/images/about-founder-moon.png", bio: moonBio },
+  { n: "N°01", name: "Dinosour", role: "Founder", img: "/images/about-founder-dinosour.webp", bio: dinoBio },
+  { n: "N°02", name: "Moon", role: "Co-Founder", img: "/images/about-founder-moon.webp", bio: moonBio },
 ];
 
 const marquee = ["Mostly calm", "Occasionally chaotic", "Always adapting", "Forever curious", "Rooted in history", "Inspired by the future"];
