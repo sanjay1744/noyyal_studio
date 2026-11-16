@@ -67,6 +67,9 @@ export default function CustomCursor() {
       setCursorLabel(customEvent.detail.label || null);
     };
 
+    // Lets the boot loader drop its native-cursor fallback once this cursor exists.
+    document.documentElement.dataset.customCursor = "on";
+
     window.addEventListener("mousemove", updateCursor);
     document.addEventListener("mouseleave", handleMouseLeave);
     document.addEventListener("mouseenter", handleMouseEnter);
@@ -90,7 +93,7 @@ export default function CustomCursor() {
     <div
       ref={cursorRef}
       className={clsx(
-        "fixed top-0 left-0 pointer-events-none z-[9999] transition-opacity duration-150 hidden md:block mix-blend-difference",
+        "fixed top-0 left-0 pointer-events-none z-[10001] transition-opacity duration-150 hidden md:block mix-blend-difference",
         isVisible ? "opacity-100" : "opacity-0"
       )}
       style={{

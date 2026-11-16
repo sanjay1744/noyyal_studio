@@ -1,20 +1,30 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
+import { preloadProjects } from "@/lib/preloadAssets";
 
 interface IntroLoaderProps {
+  /** Preloaded (blob) URL of the intro video; null while still loading. */
+  videoUrl: string | null;
+  /** Start playback – set once the user leaves the boot game. */
+  play: boolean;
   onTransitionStart: () => void;
   onComplete: () => void;
 }
 
-export default function IntroLoader({ onTransitionStart, onComplete }: IntroLoaderProps) {
+export default function IntroLoader({ videoUrl, play, onTransitionStart, onComplete }: IntroLoaderProps) {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const logoRef = useRef<HTMLImageElement>(null);
+  const transitionedRef = useRef(false);
 
   const handleTransition = useCallback(() => {
+    if (transitionedRef.current) return;
     if (!containerRef.current || !videoRef.current || !logoRef.current) return;
+    transitionedRef.current = true;
 
     // 1. Notify the parent wrapper to make the website DOM layout visible
     onTransitionStart();
@@ -65,6 +75,7 @@ export default function IntroLoader({ onTransitionStart, onComplete }: IntroLoad
       }
 
       // Dispatch the global introComplete event so the layout and page start their fade-in entrance animations
+      window.introComplete = true;
       window.dispatchEvent(new Event("introComplete"));
 
       const transitionTimeline = gsap.timeline({
@@ -122,16 +133,29 @@ export default function IntroLoader({ onTransitionStart, onComplete }: IntroLoad
     });
   }, [onTransitionStart, onComplete]);
 
+  // Latest handleTransition without re-triggering the play effect on parent re-renders.
+  const transitionRef = useRef(handleTransition);
   useEffect(() => {
-    // Failsafe timer (8 seconds) to prevent frozen screen if video hangs or autoplay block active
-    const failsafeTimeout = setTimeout(() => {
-      handleTransition();
-    }, 8000);
-
-    return () => {
-      clearTimeout(failsafeTimeout);
-    };  
+    transitionRef.current = handleTransition;
   }, [handleTransition]);
+
+  // Start the intro once the user leaves the boot game.
+  useEffect(() => {
+    if (!play || !videoUrl) return;
+    const video = videoRef.current;
+    if (!video) return;
+    video.play().catch(() => transitionRef.current());
+
+    // Failsafe so a stalled video never leaves the site hidden.
+    const duration = Number.isFinite(video.duration) ? video.duration * 1000 : 0;
+    const failsafeTimeout = setTimeout(() => transitionRef.current(), Math.max(8000, duration + 2000));
+    return () => clearTimeout(failsafeTimeout);
+  }, [play, videoUrl]);
+
+  // While the intro plays, quietly load the projects page in the background.
+  const handlePlaying = useCallback(() => {
+    preloadProjects((href) => router.prefetch(href));
+  }, [router]);
 
   return (
     <div
@@ -153,10 +177,11 @@ export default function IntroLoader({ onTransitionStart, onComplete }: IntroLoad
 
       <video
         ref={videoRef}
-        src="/intro.mp4"
-        autoPlay
+        src={videoUrl ?? undefined}
+        preload="auto"
         muted
         playsInline
+        onPlaying={handlePlaying}
         onEnded={handleTransition}
         className="w-full h-full object-contain bg-black z-10"
       />
