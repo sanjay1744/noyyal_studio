@@ -34,7 +34,7 @@ A modern, high-performance web platform designed for **Noyyal Studio** — an ar
 - 📂 **Sanity Headless CMS Integration**: Live CMS integration for architectural project showcases, research papers, and behind-the-scenes documentation, backed by robust fallback datasets for offline development.
 - ⚡ **Kinetic Motion & Smooth Scroll**: Lenis smooth inertial scrolling combined with GSAP entrance timelines and Framer Motion micro-interactions.
 - 🎨 **Architectural Grid Design System**: Clean monochrome technical grid aesthetics featuring crosshairs, subtle dot-matrix patterns, and custom Syne typography.
-- 📩 **Dual-Channel Inquiry Pipeline**: Contact endpoint (`/api/contact`) supporting atomic persistence in **Firebase Firestore** alongside automated email notifications via **Resend API**.
+- 📩 **Dual-Channel Inquiry Pipeline**: Contact endpoint (`/api/contact`) supporting atomic persistence in **Firebase Firestore** alongside automated email notifications via **SMTP (Nodemailer)**.
 - 🛠️ **Automated CI/CD Pipeline**: GitHub Actions workflow verifying TypeScript compilation (`tsc --noEmit`), ESLint compliance, and Next.js production builds on every commit.
 
 ---
@@ -51,7 +51,7 @@ A modern, high-performance web platform designed for **Noyyal Studio** — an ar
 | **Animations** | GSAP 3 + Framer Motion | Timeline-orchestrated entrance animations & micro-interactions |
 | **Smooth Scroll** | Lenis | Inertial smooth scroll behavior |
 | **Content Management** | Sanity CMS | Headless CMS client (`next-sanity`) with dynamic image optimization |
-| **Database & API** | Firebase Firestore + Resend | Serverless database for inquiries & transactional email dispatch |
+| **Database & API** | Firebase Firestore + Nodemailer (SMTP) | Serverless database for inquiries & transactional email dispatch |
 | **Hosting & CI** | Vercel + GitHub Actions | Automated linting, type-checking, build validation, and edge hosting |
 
 ---
@@ -69,7 +69,7 @@ noyyal/
 │   │   ├── about/               # About page route
 │   │   ├── about-us/            # Extended About Us page with Architectural Diagram
 │   │   ├── api/
-│   │   │   └── contact/         # Contact form POST API handler (Firebase + Resend)
+│   │   │   └── contact/         # Contact form POST API handler (Firebase + SMTP)
 │   │   ├── bts/                 # Behind the Scenes showcase route
 │   │   ├── contact/             # Contact page with inquiry form
 │   │   ├── projects/            # Architectural projects gallery route
@@ -136,7 +136,7 @@ noyyal/
 
 ## 🔑 Environment Variables
 
-The project operates with built-in mock fallbacks when API keys are omitted. To connect real Sanity CMS, Firebase, and Resend credentials, create a `.env.local` file:
+The project operates with built-in mock fallbacks when API keys are omitted. To connect real Sanity CMS, Firebase, and SMTP credentials, create a `.env.local` file:
 
 ```env
 # Sanity CMS Configuration
@@ -151,8 +151,13 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
-# Resend Email API
-RESEND_API_KEY=re_123456789
+# SMTP Email (contact form notifications)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=admin@noyyalstudios.com
+SMTP_PASS=your_app_password
+CONTACT_TO_EMAIL=admin@noyyalstudios.com
+CONTACT_FROM_EMAIL=Noyyal Studios <admin@noyyalstudios.com>
 ```
 
 ---
@@ -179,7 +184,7 @@ In the project directory, you can run:
 - `/research` — Architectural research papers, spatial investigations, and publications index.
 - `/bts` — Behind the scenes process breakdown and studio draft archives.
 - `/contact` — Interactive contact form with live validation.
-- `/api/contact` — `POST` endpoint receiving user messages, storing them in Firebase, and dispatching notification emails via Resend.
+- `/api/contact` — `POST` endpoint receiving user messages, storing them in Firebase, and dispatching notification emails via SMTP.
 
 ---
 
