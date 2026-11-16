@@ -86,7 +86,7 @@ export default function ArchitecturalAnatomyDiagram() {
         {/* Architectural Image / Diagram Illustration */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/projects_/RESIDENCE/THE BLOCK HOUSE/5.png"
+          src="/projects_/RESIDENCE/THE BLOCK HOUSE/5.webp"
           alt="Architectural Anatomy Section"
           className="w-full h-full object-cover grayscale contrast-125 opacity-85 group-hover:scale-102 transition-transform duration-700"
         />
