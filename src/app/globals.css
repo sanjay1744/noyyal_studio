@@ -101,3 +101,8 @@ html.lenis, html.lenis body {
 .lenis-scrolling iframe {
   pointer-events: none;
 }
+
+/* About Us page: typewriter-style monospace (overrides the site-wide Inter rule) */
+.about-mono, .about-mono * {
+  font-family: var(--font-about-mono), "Courier New", Courier, monospace !important;
+}
