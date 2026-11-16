@@ -88,12 +88,12 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Single family residence",
     desc: "A home carved into a laterite slope, mediating between the hillside and the valley below. The section defines three levels of inhabitation — each opening differently to the landscape.",
     tags: ["Slope", "Laterite", "Section", "Landscape"],
-    heroImage: "/projects_/RESIDENCE/THE BLOCK HOUSE/5.png",
+    heroImage: "/projects_/RESIDENCE/THE BLOCK HOUSE/5.webp",
     gallery: [
-      "/projects_/RESIDENCE/THE BLOCK HOUSE/5.png",
-      "/projects_/RESIDENCE/THE BLOCK HOUSE/6.png",
-      "/projects_/RESIDENCE/THE BLOCK HOUSE/7.png",
-      "/projects_/RESIDENCE/THE BLOCK HOUSE/8.png"
+      "/projects_/RESIDENCE/THE BLOCK HOUSE/5.webp",
+      "/projects_/RESIDENCE/THE BLOCK HOUSE/6.webp",
+      "/projects_/RESIDENCE/THE BLOCK HOUSE/7.webp",
+      "/projects_/RESIDENCE/THE BLOCK HOUSE/8.webp"
     ]
   },
   {
@@ -114,7 +114,7 @@ export const MOCK_PROJECTS: Project[] = [
       "/projects_/RESIDENCE/WHITE WAVE/E2.jpg",
       "/projects_/RESIDENCE/WHITE WAVE/E3.jpg",
       "/projects_/RESIDENCE/WHITE WAVE/E4.jpg",
-      "/projects_/RESIDENCE/WHITE WAVE/01.png",
+      "/projects_/RESIDENCE/WHITE WAVE/01.webp",
       "/projects_/RESIDENCE/WHITE WAVE/02.jpg"
     ]
   },
@@ -135,11 +135,11 @@ export const MOCK_PROJECTS: Project[] = [
       "/projects_/RESIDENCE/OXIDE/KRT3.jpg",
       "/projects_/RESIDENCE/OXIDE/KRT5.jpg",
       "/projects_/RESIDENCE/OXIDE/KRT7.jpg",
-      "/projects_/RESIDENCE/OXIDE/001krt.png",
-      "/projects_/RESIDENCE/OXIDE/002krt.png",
-      "/projects_/RESIDENCE/OXIDE/003krt.png",
+      "/projects_/RESIDENCE/OXIDE/001krt.webp",
+      "/projects_/RESIDENCE/OXIDE/002krt.webp",
+      "/projects_/RESIDENCE/OXIDE/003krt.webp",
       "/projects_/RESIDENCE/OXIDE/01.jpg",
-      "/projects_/RESIDENCE/OXIDE/002.png"
+      "/projects_/RESIDENCE/OXIDE/002.webp"
     ]
   },
   {
@@ -178,11 +178,11 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Urban residence & courtyards",
     desc: "A modern residence built with exposed cast concrete and louvred timber panels, optimizing natural cross-ventilation in tropical urban heat.",
     tags: ["Residence", "Frame", "Concrete", "Cross-ventilation"],
-    heroImage: "/projects_/RESIDENCE/THE FRAME/14.png",
+    heroImage: "/projects_/RESIDENCE/THE FRAME/14.webp",
     gallery: [
-      "/projects_/RESIDENCE/THE FRAME/14.png",
-      "/projects_/RESIDENCE/THE FRAME/15.png",
-      "/projects_/RESIDENCE/THE FRAME/16.png"
+      "/projects_/RESIDENCE/THE FRAME/14.webp",
+      "/projects_/RESIDENCE/THE FRAME/15.webp",
+      "/projects_/RESIDENCE/THE FRAME/16.webp"
     ]
   },
   {
@@ -204,7 +204,7 @@ export const MOCK_PROJECTS: Project[] = [
       "/projects_/INTERIOR/BLOCK RESIDENCE/signal-2025-10-30-14-23-07-996_002.jpg",
       "/projects_/INTERIOR/BLOCK RESIDENCE/signal-2025-10-30-14-23-49-317_002.jpg",
       "/projects_/INTERIOR/BLOCK RESIDENCE/signal-2026-05-30-012737_002.jpeg",
-      "/projects_/INTERIOR/BLOCK RESIDENCE/ChatGPT Image May 30, 2026, 01_49_55 AM.png"
+      "/projects_/INTERIOR/BLOCK RESIDENCE/ChatGPT Image May 30, 2026, 01_49_55 AM.webp"
     ]
   },
   {
@@ -219,11 +219,11 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Single family residence",
     desc: "A contemporary elevated residence crafted with exposed red clay brick massing, Malabar teak wood joinery, and expansive open balconies facing tropical foliage.",
     tags: ["Residence", "Teak", "Brickwork", "Elevation"],
-    heroImage: "/projects_/RESIDENCE/Untitled folder/6.png",
+    heroImage: "/projects_/RESIDENCE/Untitled folder/6.webp",
     gallery: [
-      "/projects_/RESIDENCE/Untitled folder/6.png",
-      "/projects_/RESIDENCE/Untitled folder/7.png",
-      "/projects_/RESIDENCE/Untitled folder/8.png"
+      "/projects_/RESIDENCE/Untitled folder/6.webp",
+      "/projects_/RESIDENCE/Untitled folder/7.webp",
+      "/projects_/RESIDENCE/Untitled folder/8.webp"
     ]
   },
   {
@@ -238,12 +238,12 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Speculative research pavilion",
     desc: "An unbuilt conceptual pavilion exploring traditional Dravidian brick firing technique transformed into a structural shell. The structure forms a microclimate canopy.",
     tags: ["Unbuilt", "Terra Cotta", "Speculative", "Shell Structure"],
-    heroImage: "/projects_/UNBUILT/THE CONTRAST/a1.png",
+    heroImage: "/projects_/UNBUILT/THE CONTRAST/a1.webp",
     gallery: [
-      "/projects_/UNBUILT/THE CONTRAST/a1.png",
-      "/projects_/UNBUILT/THE CONTRAST/a2.png",
-      "/projects_/UNBUILT/THE CONTRAST/a3.png",
-      "/projects_/UNBUILT/THE CONTRAST/a4.png"
+      "/projects_/UNBUILT/THE CONTRAST/a1.webp",
+      "/projects_/UNBUILT/THE CONTRAST/a2.webp",
+      "/projects_/UNBUILT/THE CONTRAST/a3.webp",
+      "/projects_/UNBUILT/THE CONTRAST/a4.webp"
     ]
   },
   {
@@ -258,12 +258,12 @@ export const MOCK_PROJECTS: Project[] = [
     program: "Eco-tourism sanctuary conceptual competition",
     desc: "A cantilevered lattice timber canopy designed to hover above a rain catchment basin, creating an off-grid sanctuary powered by passive air draft and rainwater harvesting.",
     tags: ["Unbuilt", "Timber Lattice", "Rain Catchment", "Eco"],
-    heroImage: "/projects_/UNBUILT/THE TILT/4.png",
+    heroImage: "/projects_/UNBUILT/THE TILT/4.webp",
     gallery: [
-      "/projects_/UNBUILT/THE TILT/4.png",
-      "/projects_/UNBUILT/THE TILT/6.png",
-      "/projects_/UNBUILT/THE TILT/16.png",
-      "/projects_/UNBUILT/THE TILT/18.png",
+      "/projects_/UNBUILT/THE TILT/4.webp",
+      "/projects_/UNBUILT/THE TILT/6.webp",
+      "/projects_/UNBUILT/THE TILT/16.webp",
+      "/projects_/UNBUILT/THE TILT/18.webp",
       "/projects_/UNBUILT/THE TILT/Enscape_2025-08-15-20-26-10.jpg"
     ]
   }
